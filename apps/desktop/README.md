@@ -26,7 +26,7 @@ npm run tauri build
 - `src/app/` — desktop app: `types.ts`, `seed.ts` (mock data), `store.ts`
   (zustand), `agent/service.ts` (AgentService interface + mock),
   `chrome.tsx`, `welcome.tsx`, `workspace.tsx`, `screens.tsx`
-- `#/app`, `#/app/tasks`, `#/app/browser`, `#/app/projects`, `#/app/settings`
+- `/app`, `/app/tasks`, `/app/browser`, `/app/projects`, `/app/settings`
 
 ## Swapping in the real backend
 
