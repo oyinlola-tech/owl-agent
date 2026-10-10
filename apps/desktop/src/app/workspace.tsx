@@ -3,6 +3,7 @@ import {
   ArrowCounterClockwise, Check, CaretDown, CaretLeft, CaretRight, Pause, Play, Stop, X,
 } from "@phosphor-icons/react";
 import { useApp } from "./store";
+import { api } from "./agent/api";
 import { contentFor } from "./seed";
 import { FILES } from "./seed";
 import type { FileNode } from "./types";
@@ -149,12 +150,30 @@ function ChatTab() {
   const draft = useApp((s) => s.draft);
   const setDraft = useApp((s) => s.setDraft);
   const send = useApp((s) => s.send);
+  const sendLive = useApp((s) => s.sendLive);
+  const liveChat = useApp((s) => s.liveChat);
+  const liveBusy = useApp((s) => s.liveBusy);
   const run = useApp((s) => s.run);
   const agent = useApp((s) => s.agent);
   const pause = useApp((s) => s.pause);
   const resume = useApp((s) => s.resume);
   const stop = useApp((s) => s.stop);
   const askConfirm = useApp((s) => s.askConfirm);
+  const modelPref = useApp((s) => s.modelPref);
+  const setModelPref = useApp((s) => s.setModelPref);
+  const [models, setModels] = useState<{ id: string; status: string }[]>([]);
+  useEffect(() => {
+    let alive = true;
+    api
+      .registry()
+      .then((r) => {
+        if (alive) setModels(r.models.map((m) => ({ id: m.id, status: m.status })));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
   const confirmStop = () => askConfirm({
     title: "Stop the running task?",
     body: "The agent halts immediately. Progress so far is kept and can be resumed from history.",
@@ -163,13 +182,39 @@ function ChatTab() {
   });
   return (
     <div className="chat">
-      <div style={{ fontSize: 13, color: "var(--steel)" }}>
-        OWL · Working on ZudoMart · {agent === "working" ? "Analyzing project" : agent === "paused" ? "Paused" : agent === "awaiting" ? "Waiting for approval" : agent === "done" ? "Done" : "Idle"}
+      <div className="chatbar">
+        <span className="chatbar-status">
+          OWL · {liveChat ? "Live model" : "Sample replay"} · Working on ZudoMart · {agent === "working" ? "Analyzing project" : agent === "paused" ? "Paused" : agent === "awaiting" ? "Waiting for approval" : agent === "done" ? "Done" : "Idle"}
+        </span>
+        <select
+          className="modelsel"
+          aria-label="Model"
+          value={modelPref}
+          onChange={(e) => setModelPref(e.target.value)}
+          title={modelPref === "auto" ? "Auto: router picks per task" : `Pinned: ${modelPref}`}
+        >
+          <option value="auto">Auto</option>
+          {models
+            .filter((m) => m.status === "available" || m.status === "verified")
+            .map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.id}
+              </option>
+            ))}
+          {models
+            .filter((m) => m.status !== "available" && m.status !== "verified")
+            .map((m) => (
+              <option key={m.id} value={m.id} disabled>
+                {m.id} ({m.status})
+              </option>
+            ))}
+        </select>
       </div>
       {chat.map((m) => (
         <div key={m.id} className={`bubble2${m.from === "you" ? " you" : ""}`}>
           <b className="who">{m.from === "you" ? "YOU" : m.from === "owl" ? "OWL" : "SYSTEM"}</b>
           {m.text}
+          {m.meta && <div className="meta-line">{m.meta}</div>}
           {m.plan && (
             <ul className="plan">
               {m.plan.map((p, i) => (
@@ -196,8 +241,10 @@ function ChatTab() {
       <div className="prompt">
         <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Describe what you want to build..."
           aria-label="Message OWL"
-          onKeyDown={(e) => { if (e.key === "Enter") send(); }} />
-        <button className="btn btn-dark" onClick={send}>Send</button>
+          onKeyDown={(e) => { if (e.key === "Enter") (liveChat ? sendLive : send)(); }} />
+        <button className="btn btn-dark" disabled={liveChat && liveBusy} onClick={liveChat ? sendLive : send}>
+          {liveChat && liveBusy ? "Waiting…" : "Send"}
+        </button>
       </div>
     </div>
   );
@@ -410,17 +457,80 @@ function Inspector() {
               ))
               : <div style={{ fontSize: 13, color: "var(--steel)" }}>Approval queue is clear.</div>
           )}
-          {tab === "context" && (
-            <div className="ctx">
-              <div>Files 8 · Lines 1,843 · 12 messages · 14 tools</div>
-              <div>~/Projects/zudo · NVIDIA model</div>
-              <div>Context usage 32%</div>
-              <div className="bar"><i /></div>
-            </div>
-          )}
+          {tab === "context" && <ContextPanel />}
         </div>
       </div>
     </>
+  );
+}
+
+/* ---------- context inspector ---------- */
+function ContextPanel() {
+  const chat = useApp((s) => s.chat);
+  const modelPref = useApp((s) => s.modelPref);
+  const [report, setReport] = useState<import("./agent/api").BudgetReport | null>(null);
+  const [history, setHistory] = useState<{ id: number; level: number; before_tokens: number; after_tokens: number; summary: string; created_at: string }[]>([]);
+  useEffect(() => {
+    let alive = true;
+    const parts = chat
+      .filter((m) => m.from !== "sys")
+      .slice(-12)
+      .map((m) => ({ category: m.from === "you" ? "recent" : "history", text: m.text.slice(0, 2000) }));
+    api
+      .budget(modelPref === "auto" ? "" : modelPref, [
+        { category: "instructions", text: "You are OWL, a careful coding assistant." },
+        ...parts,
+      ])
+      .then((r) => {
+        if (alive) setReport(r);
+      })
+      .catch(() => {});
+    api
+      .compressions()
+      .then((h) => {
+        if (alive) setHistory(h);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [chat.length, modelPref]);
+  if (!report) {
+    return (
+      <div className="ctx">
+        <div>Files 8 · Lines 1,843 · 12 messages · 14 tools</div>
+        <div>Context budget unavailable offline.</div>
+      </div>
+    );
+  }
+  const pct = Math.min(100, Math.round(report.utilization * 100));
+  return (
+    <div className="ctx">
+      <div>Model {report.model || "auto"} · limit {report.limit.toLocaleString()} ({report.limit_source})</div>
+      <div>
+        {report.used.toLocaleString()} of {report.available.toLocaleString()} tokens ({pct}%)
+        {report.over_budget ? " · OVER BUDGET" : ""}
+        {report.should_compress && !report.over_budget ? " · compression advised" : ""}
+      </div>
+      <div className="bar">
+        <i style={{ width: `${pct}%` }} />
+      </div>
+      {report.parts.map((p) => (
+        <div key={p.category}>
+          {p.category}: {p.tokens.toLocaleString()}
+        </div>
+      ))}
+      {history.length > 0 && (
+        <div>
+          Compression history
+          {history.slice(0, 5).map((h) => (
+            <div key={h.id}>
+              L{h.level}: {h.before_tokens.toLocaleString()} to {h.after_tokens.toLocaleString()}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
