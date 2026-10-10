@@ -4,6 +4,8 @@ import { useApp } from "./store";
 import type { AppScreen } from "./types";
 import { AiBar, ConfirmModal, Notice, Palette, Rail, StatusBar } from "./chrome";
 import { Welcome, Projects, CreateModal } from "./welcome";
+import { Memory } from "./memory";
+import { BackendTaskDetail } from "./btask";
 import Workspace, { TopBar } from "./workspace";
 import { BrowserStudio, Settings, TaskDetail, Tasks } from "./screens";
 
@@ -64,8 +66,10 @@ export default function DesktopApp({ initial = "welcome" }: { initial?: AppScree
         {screen === "workspace" && <Workspace />}
         {screen === "tasks" && <Tasks />}
         {screen === "task" && <TaskDetail />}
+        {screen === "btask" && <BackendTaskDetail />}
         {screen === "browser" && <BrowserStudio />}
         {screen === "projects" && <Projects />}
+        {screen === "memory" && <Memory />}
         {screen === "settings" && <Settings />}
         <StatusBar onCommand={() => setPalette(true)} />
       </div>
