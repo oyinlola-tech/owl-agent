@@ -2,7 +2,7 @@ const WALL = [
   { name: "GitHub", slug: "github" },
   { name: "GitLab", slug: "gitlab" },
   { name: "Docker", slug: "docker" },
-  { name: "VS Code", slug: "visualstudiocode" },
+  { name: "TypeScript", slug: "typescript" },
   { name: "Node.js", slug: "nodedotjs" },
 ];
 
