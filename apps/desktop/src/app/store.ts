@@ -5,6 +5,7 @@ import type {
 } from "./types";
 import { INITIAL_CHAT, INITIAL_TERMINAL, TASKS } from "./seed";
 import { MockAgentService, type AgentService } from "./agent/service";
+import { api, type ChatMessage } from "./agent/api";
 
 let clock = 0;
 const nid = (p: string) => `${p}-${++clock}-${Date.now() % 100000}`;
@@ -31,6 +32,7 @@ interface AppState {
   confirm: ConfirmState | null;
   taskFilter: TaskFilter;
   openTaskId: string | null;
+  openBTaskId: string | null;
   agent: AgentStatus;
   step: number;
   events: ActEvent[];
@@ -41,6 +43,9 @@ interface AppState {
   draft: string;
   tasks: Task[];
   notice: string | null;
+  liveChat: boolean;
+  liveBusy: boolean;
+  modelPref: string;
   sideW: number;
   inspW: number;
   termH: number;
@@ -64,8 +69,12 @@ interface AppState {
   answerConfirm: (yes: boolean) => void;
   setFilter: (f: TaskFilter) => void;
   openTask: (id: string) => void;
+  openBTask: (id: string) => void;
   setDraft: (d: string) => void;
+  setLiveChat: (v: boolean) => void;
+  setModelPref: (m: string) => void;
   send: () => void;
+  sendLive: () => void;
   run: () => void;
   pause: () => void;
   resume: () => void;
@@ -119,6 +128,7 @@ export const useApp = create<AppState>((set, get) => {
     confirm: null,
     taskFilter: "all",
     openTaskId: null,
+    openBTaskId: null,
     agent: "idle",
     step: 0,
     events: [],
@@ -129,6 +139,15 @@ export const useApp = create<AppState>((set, get) => {
     draft: "",
     tasks: TASKS,
     notice: null,
+    liveChat: false,
+    liveBusy: false,
+    modelPref: (() => {
+      try {
+        return window.localStorage.getItem("owl-model") ?? "auto";
+      } catch {
+        return "auto";
+      }
+    })(),
     sideW: 264,
     inspW: 320,
     termH: 216,
@@ -156,7 +175,56 @@ export const useApp = create<AppState>((set, get) => {
     },
     setFilter: (taskFilter) => set({ taskFilter }),
     openTask: (openTaskId) => set({ openTaskId, screen: "task" }),
+    openBTask: (openBTaskId) => set({ openBTaskId, screen: "btask" }),
     setDraft: (draft) => set({ draft }),
+    setLiveChat: (liveChat) => set({ liveChat }),
+    setModelPref: (modelPref) => {
+      try {
+        window.localStorage.setItem("owl-model", modelPref);
+      } catch {
+        /* private mode: preference lasts the session */
+      }
+      set({ modelPref });
+    },
+    sendLive: () => {
+      const text = get().draft.trim();
+      if (!text || get().liveBusy) return;
+      const modelPref = get().modelPref;
+      const history: ChatMessage[] = get()
+        .chat.filter((m) => m.from !== "sys")
+        .slice(-10)
+        .map((m) => ({
+          role: m.from === "you" ? ("user" as const) : ("assistant" as const),
+          content: m.text,
+        }));
+      const id = nid("m");
+      set((s) => ({
+        chat: [...s.chat, { id: nid("m"), from: "you", text }, { id, from: "owl", text: "" }],
+        draft: "",
+        liveBusy: true,
+      }));
+      const patch = (fn: (m: ChatMsg) => ChatMsg) =>
+        set((s) => ({ chat: s.chat.map((m) => (m.id === id ? fn(m) : m)) }));
+      api.streamChat(
+        [...history, { role: "user", content: text }],
+        modelPref,
+        (delta) => patch((m) => ({ ...m, text: m.text + delta })),
+        (_full, info) => {
+          const u = info.usage;
+          const tokens = `${u.input} in / ${u.output} out (${u.estimated ? "estimated" : "measured"})`;
+          const reason = info.routing ? ` · ${info.routing}` : "";
+          patch((m) => ({ ...m, meta: `via ${info.model || "model"} · ${tokens}${reason}` }));
+          set({ liveBusy: false });
+          if (modelPref === "auto") {
+            set({ notice: `Auto selected ${info.model || "a model"}` });
+          }
+        },
+        (code, message) => {
+          patch((m) => ({ ...m, text: `Live model unavailable [${code}]: ${message}` }));
+          set({ liveBusy: false, notice: `Live model error: ${message}` });
+        },
+      );
+    },
     pushLine: (l) => set((s) => ({ terminal: [...s.terminal, { ...l, id: nid("t") }] })),
     notify: (notice) => set({ notice }),
     setSideW: (sideW) => set({ sideW: Math.min(480, Math.max(180, sideW)) }),
