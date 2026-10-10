@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bird, FolderOpen, Plus } from "@phosphor-icons/react";
 import { useApp } from "./store";
 import { PROJECTS, TEMPLATES } from "./seed";
@@ -97,6 +97,12 @@ export function CreateModal() {
   const [name, setName] = useState("My Application");
   const [tpl, setTpl] = useState("Let OWL decide");
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setCreate(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, setCreate]);
   if (!open) return null;
   const create = () => {
     if (!name.trim()) { setError("Give the project a name to continue."); return; }
