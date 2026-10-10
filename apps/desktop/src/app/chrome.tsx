@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ClockCounterClockwise, FolderOpen, Gear, Globe, House, Layout } from "@phosphor-icons/react";
+import { Brain, ClockCounterClockwise, FolderOpen, Gear, Globe, House, Layout } from "@phosphor-icons/react";
 import { useApp } from "./store";
+import { api } from "./agent/api";
 import { COMMANDS } from "./seed";
 import type { AppScreen } from "./types";
 
@@ -10,6 +11,7 @@ const RAIL: { s: AppScreen; icon: typeof House; label: string }[] = [
   { s: "workspace", icon: Layout, label: "Workspace" },
   { s: "tasks", icon: ClockCounterClockwise, label: "Tasks" },
   { s: "browser", icon: Globe, label: "Browser Studio" },
+  { s: "memory", icon: Brain, label: "Memory" },
 ];
 
 export function Rail() {
@@ -36,6 +38,24 @@ export function StatusBar({ onCommand }: { onCommand: () => void }) {
   const changes = useApp((s) => s.changes);
   const go = useApp((s) => s.go);
   const toggleTerm = useApp((s) => s.toggleTerm);
+  const [service, setService] = useState<"unknown" | "online" | "offline">("unknown");
+  const [version, setVersion] = useState("");
+  const check = async () => {
+    try {
+      const h = await api.health();
+      setVersion(h.version);
+      setService("online");
+    } catch {
+      setService("offline");
+    }
+  };
+  useEffect(() => {
+    let alive = true;
+    check().catch(() => {});
+    const t = setInterval(() => { if (alive) check().catch(() => {}); }, 15000);
+    return () => { alive = false; clearInterval(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <div className="statusbar">
       <button onClick={() => go("workspace")}>main, {changes.length} changes</button>
@@ -43,6 +63,13 @@ export function StatusBar({ onCommand }: { onCommand: () => void }) {
         {agent === "working" ? "Agent working" : agent === "paused" ? "Agent paused" : agent === "awaiting" ? "Agent needs approval" : "Agent ready"}
       </button>
       <span className="grow" />
+      <button
+        onClick={() => check().catch(() => {})}
+        title={service === "online" ? `Python service online (v${version})` : "Python service unreachable — mock mode"}
+        style={{ color: service === "online" ? "var(--green)" : undefined }}
+      >
+        Service {service === "unknown" ? "…" : service}
+      </button>
       <span className="hide-m">NVIDIA model</span>
       <button onClick={toggleTerm}>Terminal</button>
       <button onClick={onCommand}>Palette</button>
@@ -119,6 +146,12 @@ export function Palette() {
 export function ConfirmModal() {
   const confirm = useApp((s) => s.confirm);
   const answerConfirm = useApp((s) => s.answerConfirm);
+  useEffect(() => {
+    if (!confirm) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") answerConfirm(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [confirm, answerConfirm]);
   if (!confirm) return null;
   return (
     <div className="overlay" onClick={() => answerConfirm(false)}>
