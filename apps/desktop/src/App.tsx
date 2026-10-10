@@ -4,7 +4,7 @@ import DesktopApp from "./app";
 import { getPath, go, usePath } from "./router";
 import type { AppScreen } from "./app/types";
 
-const APP_SCREENS: AppScreen[] = ["welcome", "workspace", "tasks", "task", "browser", "projects", "memory", "settings"];
+const APP_SCREENS: AppScreen[] = ["welcome", "workspace", "tasks", "task", "btask", "browser", "projects", "memory", "settings"];
 
 function appSub(path: string): AppScreen {
   const sub = path.replace(/^\/app\/?/, "") as AppScreen;
