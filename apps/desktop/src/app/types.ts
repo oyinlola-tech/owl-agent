@@ -26,6 +26,7 @@ export interface ChatMsg {
   from: "you" | "owl" | "sys";
   text: string;
   plan?: string[];
+  meta?: string;
 }
 
 export interface ChangeFile {
@@ -68,7 +69,7 @@ export interface Project {
 }
 
 export type AppScreen =
-  | "welcome" | "workspace" | "tasks" | "task" | "browser" | "projects" | "settings";
+  | "welcome" | "workspace" | "tasks" | "task" | "btask" | "browser" | "projects" | "memory" | "settings";
 export type CenterTab = "chat" | "code" | "changes" | "browser" | "preview";
 export type SideSection = "files" | "search" | "git" | "tasks";
 export type InspectorTab = "agent" | "changes" | "tasks" | "context";
