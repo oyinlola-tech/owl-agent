@@ -79,11 +79,6 @@ export function ChangeHistoryScreen() {
     body: "OWL puts the file back the way it was before this change. If the file has changed since, the revert stops and nothing is overwritten.",
     confirmLabel: "Revert change",
     run: () => void (async () => {
-      if (isSampleData) {
-        setRevertedAtById((reverted) => ({ ...reverted, [entry.row.id]: new Date().toISOString() }));
-        showNotice(SAMPLE_SAVE_NOTICE_SHORT);
-        return;
-      }
       setRevertingId(entry.row.id);
       try {
         await agentApi.revertJournal(entry.task.id, entry.row.id);
@@ -109,7 +104,6 @@ export function ChangeHistoryScreen() {
         lede="Every file OWL changed, the approval that allowed it, and the checkpoints taken before. Revert any single change."
         actions={<button className="btn btn-secondary" onClick={() => void loadHistory()} disabled={loading}><ArrowClockwise size={15} /> Refresh</button>}
       />
-      {isSampleData && <SampleDataBanner what="change history" onRetry={() => void loadHistory()} />}
 
       <div className="x-stats">
         <StatCard icon={PencilSimpleLine} hue="yellow" label="Changes applied" value={String(changeEntries.length)} />
