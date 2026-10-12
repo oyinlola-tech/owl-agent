@@ -4,7 +4,7 @@ set -eu
 REPO="oyinlola-tech/owl-agent"
 API_URL="https://api.github.com/repos/${REPO}/releases"
 CHECKSUM_FILE="SHA256SUMS.txt"
-APP_NAME="OWL"
+APP_NAME="OWL Agent"
 WORK_DIR=""
 MOUNT_DIR=""
 DRY_RUN=0
@@ -34,8 +34,8 @@ What it does:
   2. Downloads the installer for your system to a temporary folder.
   3. Checks its SHA-256 against SHA256SUMS.txt from the same release.
   4. Installs it:
-     macOS     copies OWL.app to /Applications (or ~/Applications).
-     AppImage  copies it to ~/.local/bin/owl and adds a menu entry.
+     macOS     copies "OWL Agent.app" to /Applications (or ~/Applications).
+     AppImage  copies it to ~/.local/bin/owl-agent and adds a menu entry.
      deb/rpm   runs sudo dpkg -i / sudo rpm -i.
 EOF
 }
@@ -186,32 +186,49 @@ EOF
 install_appimage_on_linux() {
   bin_dir="$HOME/.local/bin"
   apps_dir="$HOME/.local/share/applications"
-  icon_dir="$HOME/.local/share/icons/hicolor/128x128/apps"
-  mkdir -p "$bin_dir" "$apps_dir" "$icon_dir"
-  cp "$1" "$bin_dir/owl"
-  chmod +x "$bin_dir/owl"
-  icon_url="https://raw.githubusercontent.com/${REPO}/$2/apps/desktop/src-tauri/icons/128x128.png"
-  download_file "$icon_url" "$icon_dir/owl.png" 2>/dev/null || say "could not download the icon (menu entry will use a default icon)"
-  cat >"$apps_dir/owl.desktop" <<EOF
+  icons_root="$HOME/.local/share/icons/hicolor"
+  mkdir -p "$bin_dir" "$apps_dir" "$icons_root/128x128/apps" "$icons_root/256x256/apps"
+  cp "$1" "$bin_dir/owl-agent"
+  chmod +x "$bin_dir/owl-agent"
+  icon_base="https://raw.githubusercontent.com/${REPO}/$2/apps/desktop/src-tauri/icons"
+  download_file "$icon_base/128x128.png" "$icons_root/128x128/apps/owl-agent.png" 2>/dev/null \
+    || say "could not download the 128px icon (the menu may show a default icon)"
+  download_file "$icon_base/128x128@2x.png" "$icons_root/256x256/apps/owl-agent.png" 2>/dev/null \
+    || say "could not download the 256px icon"
+  cat >"$apps_dir/owl-agent.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=OWL
+Name=OWL Agent
 Comment=Local-first AI coding agent
-Exec=$bin_dir/owl %u
-Icon=owl
+Exec=$bin_dir/owl-agent %u
+Icon=owl-agent
+StartupWMClass=owl-agent
 Terminal=false
 Categories=Development;
 MimeType=x-scheme-handler/owl;
 EOF
+  remove_previous_owl_appimage_install "$bin_dir" "$apps_dir"
   if command -v update-desktop-database >/dev/null 2>&1; then
     update-desktop-database "$apps_dir" >/dev/null 2>&1 || true
   fi
-  say "installed $bin_dir/owl and a menu entry"
+  if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -q -t "$icons_root" >/dev/null 2>&1 || true
+  fi
+  say "installed $bin_dir/owl-agent and a menu entry"
   case ":$PATH:" in
     *":$bin_dir:"*) ;;
-    *) say "note: $bin_dir is not on your PATH; add it to run 'owl' from a terminal" ;;
+    *) say "note: $bin_dir is not on your PATH; add it to run 'owl-agent' from a terminal" ;;
   esac
-  say "AppImages need FUSE 2 (for example: sudo apt install libfuse2) on some distributions."
+}
+
+remove_previous_owl_appimage_install() {
+  if [ -f "$2/owl.desktop" ] && grep -q '^Comment=Local-first AI coding agent$' "$2/owl.desktop"; then
+    rm -f "$2/owl.desktop"
+    if [ -f "$1/owl" ] && head -c 4 "$1/owl" | grep -q 'ELF'; then
+      rm -f "$1/owl"
+    fi
+    say "removed the older ~/.local/bin/owl install (it clashed with the system 'owl' tool)"
+  fi
 }
 
 install_package_on_linux() {
