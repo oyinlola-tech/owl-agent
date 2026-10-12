@@ -150,4 +150,5 @@ class BrowserPageInspector:
     async def inspect_page(self, url: str, width: int = 1440, shot: bool = False) -> dict:
         if width not in (390, 768, 1024, 1440):
             raise BrowserError("width must be one of 390, 768, 1024, 1440")
+        await asyncio.to_thread(validate_browser_url, url, allow_loopback=self.allow_loopback)
         return await asyncio.to_thread(self.open_page_and_read, url, width, shot)
