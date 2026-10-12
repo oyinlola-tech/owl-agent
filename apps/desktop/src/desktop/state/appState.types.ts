@@ -1,6 +1,6 @@
 import type {
   ActEvent, AgentStatus, AppScreen, Approval, CenterTab, ChangeFile,
-  ChatMsg, InspectorTab, Project, SideSection, Task, TaskFilter, TermLine,
+  ChatMsg, InspectorTab, Project, SideSection, TaskFilter, TermLine,
 } from "./workspace.types";
 
 export interface ConfirmState {
@@ -8,6 +8,11 @@ export interface ConfirmState {
   body: string;
   confirmLabel: string;
   run: () => void;
+}
+
+export interface CommandRunOptions {
+  confirm_high_risk?: boolean;
+  allow_network?: boolean;
 }
 
 export interface AppState {
@@ -34,24 +39,22 @@ export interface AppState {
   chat: ChatMsg[];
   terminal: TermLine[];
   draft: string;
-  tasks: Task[];
   notice: string | null;
   liveChatEnabled: boolean;
-  liveReplyInProgress: boolean;
   preferredModel: string;
+  taskId: string | null;
+  needsProvider: boolean;
+  terminalBusy: boolean;
   filePanelWidth: number;
   inspectorWidth: number;
   terminalHeight: number;
   openFilePath: string;
-  editedFiles: Record<string, string>;
-  fileChangeDecisions: Record<string, "pending" | "accepted" | "rejected">;
-  fileChangeHistory: { path: string; prev: "pending" | "accepted" | "rejected" }[];
   shortcutsOpen: boolean;
   sidebarCollapsedPreference: boolean;
   sidebarExpandedInWorkspace: boolean;
   terminalTab: "agent" | "dev" | "tests";
   editorTabs: string[];
-  cancelLiveReply: (() => void) | null;
+  cancelTaskStream: (() => void) | null;
 
   goToScreen: (s: AppScreen) => void;
   openProject: (p: Project) => void;
@@ -72,23 +75,20 @@ export interface AppState {
   setDraft: (d: string) => void;
   setLiveChatEnabled: (v: boolean) => void;
   setPreferredModel: (m: string) => void;
-  sendDraftToSampleAgent: () => void;
-  sendDraftToLiveModel: () => void;
-  runSampleTask: () => void;
+  sendWorkspaceMessage: () => void;
+  attachTaskStream: (taskId: string) => void;
   pauseAgent: () => void;
   resumeAgent: () => void;
   stopAgent: () => void;
   decideApproval: (id: string, v: "approved" | "rejected") => void;
+  appendChat: (message: Omit<ChatMsg, "id">) => void;
   appendTerminalLine: (l: Omit<TermLine, "id">) => void;
   showNotice: (n: string | null) => void;
   setFilePanelWidth: (w: number) => void;
   setInspectorWidth: (w: number) => void;
   setTerminalHeight: (h: number) => void;
   openFile: (path: string) => void;
-  saveFileEdit: (path: string, value: string) => void;
-  decideFileChange: (path: string, v: "accepted" | "rejected" | "pending") => void;
-  undoLastFileChange: () => void;
-  runTerminalCommand: (cmd: string) => void;
+  runTerminalCommand: (cmd: string, options?: CommandRunOptions) => void;
   startNewTask: () => void;
   setShortcutsOpen: (v: boolean) => void;
   setSidebarCollapsedPreference: (v: boolean) => void;
@@ -96,5 +96,4 @@ export interface AppState {
   setTerminalTab: (t: "agent" | "dev" | "tests") => void;
   clearTerminal: () => void;
   setEditorTabs: (tabs: string[]) => void;
-  stopLiveReply: () => void;
 }

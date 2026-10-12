@@ -1,34 +1,86 @@
 import { create } from "zustand";
-import type { ChatMsg } from "./workspace.types";
-import type { AppState } from "./appState.types";
+import type { AppState, CommandRunOptions } from "./appState.types";
+import type { Project } from "./workspace.types";
 import { readStoredFlag, readStoredValue, writeStoredFlag, writeStoredValue } from "../../shared/helpers/storage.helper";
-import { INITIAL_CHAT, INITIAL_TERMINAL, TASKS } from "../services/samples/sampleWorkspace.data";
-import { MockAgentService, type AgentService } from "../services/mockAgent.service";
 import { agentApi } from "../services/agentApi.service";
-import { type ChatMessage } from "../services/agentApi.types";
+import { ApiError } from "../services/connection/serviceRequest.service";
+import {
+  applyTaskEvent, mapApprovalRow, refreshApprovals, refreshChanges, statusFromSnapshot, type TaskEngineHost,
+} from "./workspaceTaskEngine";
 
 let idCounter = 0;
 const createUniqueId = (prefix: string) => `${prefix}-${++idCounter}-${Date.now() % 100000}`;
 
-let sampleAgentService: AgentService | null = null;
+function welcomeChat(project: Project): { id: string; from: "sys"; text: string }[] {
+  const languages = project.stack?.languages ?? [];
+  const stackNote = languages.length ? ` Detected ${languages.join(", ")}.` : "";
+  return [{
+    id: createUniqueId("m"),
+    from: "sys",
+    text: `Opened ${project.name}.${stackNote} Describe a task — OWL plans it, shows every change as a diff, and waits for your approval.`,
+  }];
+}
 
 export const useAppStore = create<AppState>((set, get) => {
-  if (!sampleAgentService) {
-    sampleAgentService = new MockAgentService({
-      reset: () => set({
-        agentStatus: "working", agentStep: 0, agentEvents: [], approvals: [], changes: [],
-        chat: INITIAL_CHAT, centerTab: "chat",
-      }),
-      steps: (agentEvents) => set({ agentEvents }),
-      chat: (msg) => set((s) => ({ chat: [...s.chat, { from: msg.from, text: msg.text, plan: msg.plan, id: createUniqueId("m") }] })),
-      lines: (lines) => set((s) => ({ terminal: [...s.terminal, ...lines.map((l) => ({ kind: l.kind, text: l.text, id: createUniqueId("t") }))] })),
-      approvals: (approvals) => set({ approvals }),
-      changes: (changes) => set({ changes }),
-      status: (agentStatus, agentStep) => set({ agentStatus, agentStep }),
-      notice: (notice) => set({ notice: notice || null }),
+  const host = (): TaskEngineHost => ({
+    appendChat: (message) => get().appendChat(message),
+    appendTerminal: (line) => get().appendTerminalLine(line),
+    setSteps: (agentEvents) => set({ agentEvents }),
+    getSteps: () => get().agentEvents,
+    setApprovals: (approvals) => set({ approvals, agentStatus: approvals.some((a) => a.status === "pending") ? "awaiting" : get().agentStatus }),
+    setChanges: (changes) => set({ changes }),
+    setStatus: (agentStatus) => set({ agentStatus }),
+    setProgress: (agentStep) => set({ agentStep }),
+    getTaskId: () => get().taskId,
+    getProjectId: () => get().project?.id ?? null,
+    notice: (notice) => set({ notice }),
+  });
+
+  const reportSendError = (error: unknown) => {
+    if (error instanceof ApiError && error.code === "provider_not_configured") {
+      set({ needsProvider: true, agentStatus: "idle" });
+      return;
+    }
+    const message = error instanceof Error ? error.message : "the local service is unreachable";
+    set((s) => ({ agentStatus: "idle", chat: [...s.chat, { id: createUniqueId("m"), from: "sys", text: `Couldn't reach OWL: ${message}` }] }));
+  };
+
+  const runCommandWithOptions = (command: string, options: CommandRunOptions) => {
+    const project = get().project;
+    if (!project) return;
+    set({ terminalBusy: true });
+    agentApi.runProjectCommand(project.id, { command, ...options }, {
+      onOutput: (stream, text) =>
+        get().appendTerminalLine({ kind: stream === "stderr" ? "err" : "out", text: text.replace(/\n+$/, "") }),
+      onCompleted: (data) => {
+        const exit = Number(data.exit_code ?? 0);
+        set({ terminalBusy: false });
+        get().appendTerminalLine({ kind: exit === 0 ? "ok" : "err", text: `exit ${exit}${data.truncated ? " (output truncated)" : ""}` });
+      },
+      onError: (code, detail, data) => {
+        set({ terminalBusy: false });
+        if (code === "confirmation_required") {
+          get().askForConfirmation({
+            title: "Run this high-risk command?",
+            body: `${detail}${data.reason ? ` — ${String(data.reason)}` : ""} It runs in the project sandbox.`,
+            confirmLabel: "Run it",
+            run: () => runCommandWithOptions(command, { ...options, confirm_high_risk: true }),
+          });
+          return;
+        }
+        if (code === "network_confirmation_required") {
+          get().askForConfirmation({
+            title: "Allow network access?",
+            body: `${detail} Only allow it if you trust this command.`,
+            confirmLabel: "Allow network",
+            run: () => runCommandWithOptions(command, { ...options, allow_network: true }),
+          });
+          return;
+        }
+        get().appendTerminalLine({ kind: "err", text: code === "command_refused" ? `refused: ${detail}` : detail });
+      },
     });
-  }
-  const sampleAgent = (): AgentService => sampleAgentService as AgentService;
+  };
 
   return {
     screen: "welcome",
@@ -51,30 +103,37 @@ export const useAppStore = create<AppState>((set, get) => {
     agentEvents: [],
     approvals: [],
     changes: [],
-    chat: INITIAL_CHAT,
-    terminal: INITIAL_TERMINAL,
+    chat: [],
+    terminal: [],
     draft: "",
-    tasks: TASKS,
     notice: null,
     liveChatEnabled: false,
-    liveReplyInProgress: false,
     preferredModel: readStoredValue("owl-model") ?? "auto",
+    taskId: null,
+    needsProvider: false,
+    terminalBusy: false,
     filePanelWidth: 264,
     inspectorWidth: 320,
     terminalHeight: 216,
-    openFilePath: "src/auth/service.go",
-    editedFiles: {},
-    fileChangeDecisions: {},
-    fileChangeHistory: [],
+    openFilePath: "",
     shortcutsOpen: false,
     sidebarCollapsedPreference: readStoredFlag("owl-sb-collapsed", false),
     sidebarExpandedInWorkspace: readStoredFlag("owl-sb-ws-expanded", false),
     terminalTab: "agent",
-    editorTabs: ["src/auth/service.go", "src/auth/middleware.go", "src/main.go"],
-    cancelLiveReply: null,
+    editorTabs: [],
+    cancelTaskStream: null,
 
     goToScreen: (screen) => set({ screen, commandPaletteOpen: false, askOwlOpen: false }),
-    openProject: (project) => set({ project, screen: "workspace", centerTab: "chat" }),
+    openProject: (project) => {
+      get().cancelTaskStream?.();
+      set({
+        project, screen: "workspace", centerTab: "chat", taskId: null, needsProvider: false,
+        chat: welcomeChat(project), terminal: [], agentEvents: [], approvals: [], changes: [],
+        agentStatus: "idle", agentStep: 0, openFilePath: "", editorTabs: [], cancelTaskStream: null,
+      });
+      void agentApi.updateProject(project.id, { opened: true }).catch(() => {});
+      void refreshChanges(host());
+    },
     setCenterTab: (centerTab) => set({ centerTab }),
     setFilePanelSection: (filePanelSection) => set({ filePanelSection, filePanelOpen: true }),
     setInspectorTab: (inspectorTab) => set({ inspectorTab, inspectorOpen: true }),
@@ -99,91 +158,88 @@ export const useAppStore = create<AppState>((set, get) => {
       writeStoredValue("owl-model", preferredModel);
       set({ preferredModel });
     },
-    sendDraftToLiveModel: () => {
+    sendWorkspaceMessage: () => {
       const text = get().draft.trim();
-      if (!text || get().liveReplyInProgress) return;
-      const modelPref = get().preferredModel;
-      const history: ChatMessage[] = get()
-        .chat.filter((m) => m.from !== "sys")
-        .slice(-10)
-        .map((m) => ({
-          role: m.from === "you" ? ("user" as const) : ("assistant" as const),
-          content: m.text,
-        }));
-      const id = createUniqueId("m");
-      set((s) => ({
-        chat: [...s.chat, { id: createUniqueId("m"), from: "you", text }, { id, from: "owl", text: "" }],
-        draft: "",
-        liveReplyInProgress: true,
-      }));
-      const patch = (fn: (m: ChatMsg) => ChatMsg) =>
-        set((s) => ({ chat: s.chat.map((m) => (m.id === id ? fn(m) : m)) }));
-      const cancel = agentApi.streamChat(
-        [...history, { role: "user", content: text }],
-        modelPref,
-        (delta) => patch((m) => ({ ...m, text: m.text + delta })),
-        (_full, info) => {
-          const u = info.usage;
-          const tokens = `${u.input} in / ${u.output} out (${u.estimated ? "estimated" : "measured"})`;
-          const reason = info.routing ? ` · ${info.routing}` : "";
-          patch((m) => ({ ...m, meta: `via ${info.model || "model"} · ${tokens}${reason}` }));
-          set({ liveReplyInProgress: false, cancelLiveReply: null });
-          if (modelPref === "auto") {
-            set({ notice: `Auto selected ${info.model || "a model"}` });
-          }
-        },
-        (code, message) => {
-          patch((m) => ({ ...m, text: `Live model unavailable [${code}]: ${message}` }));
-          set({ liveReplyInProgress: false, cancelLiveReply: null, notice: `Live model error: ${message}` });
-        },
-      );
-      set({ cancelLiveReply: cancel });
+      const project = get().project;
+      if (!text || !project) return;
+      get().appendChat({ from: "you", text });
+      set({ draft: "", needsProvider: false });
+      const taskId = get().taskId;
+      if (taskId) {
+        set({ agentStatus: "working" });
+        agentApi.sendBackendTaskMessage(taskId, text).catch(reportSendError);
+        return;
+      }
+      set({ agentStatus: "working", agentEvents: [], approvals: [] });
+      agentApi.createBackendTask(text, project.name, project.path, get().preferredModel)
+        .then((task) => {
+          set({ taskId: task.id });
+          get().attachTaskStream(task.id);
+        })
+        .catch(reportSendError);
     },
+    attachTaskStream: (taskId) => {
+      get().cancelTaskStream?.();
+      const cancel = agentApi.events(taskId, (type, payload) => {
+        if (type === "snapshot") {
+          const snapshot = payload as { status: string; progress: number; approvals?: unknown[] };
+          set({ agentStatus: statusFromSnapshot(snapshot.status), agentStep: snapshot.progress ?? 0 });
+          if (Array.isArray(snapshot.approvals)) {
+            set({ approvals: snapshot.approvals.map((row) => mapApprovalRow(row as never)) });
+          }
+          return;
+        }
+        applyTaskEvent(type, (payload as { data?: unknown }).data ?? payload, host());
+      });
+      set({ cancelTaskStream: cancel });
+    },
+    pauseAgent: () => {
+      const taskId = get().taskId;
+      if (!taskId) return;
+      set({ agentStatus: "paused" });
+      agentApi.pauseBackendTask(taskId).catch(() => {});
+    },
+    resumeAgent: () => {
+      const taskId = get().taskId;
+      if (!taskId) return;
+      set({ agentStatus: "working" });
+      agentApi.resumeBackendTask(taskId).catch(() => {});
+    },
+    stopAgent: () => {
+      const taskId = get().taskId;
+      set({ agentStatus: "stopped" });
+      if (taskId) agentApi.cancelBackendTask(taskId).catch(() => {});
+    },
+    decideApproval: (id, v) => {
+      const taskId = get().taskId;
+      set((s) => ({ approvals: s.approvals.map((a) => (a.id === id ? { ...a, status: v } : a)) }));
+      if (!taskId) return;
+      agentApi.decide(taskId, id, v === "approved")
+        .then(() => { void refreshApprovals(host()); void refreshChanges(host()); })
+        .catch(() => set({ notice: "Couldn't record the decision. Is the service running?" }));
+    },
+    appendChat: (message) => set((s) => ({ chat: [...s.chat, { ...message, id: createUniqueId("m") }] })),
     appendTerminalLine: (l) => set((s) => ({ terminal: [...s.terminal, { ...l, id: createUniqueId("t") }] })),
     showNotice: (notice) => set({ notice }),
     setFilePanelWidth: (width) => set({ filePanelWidth: Math.min(480, Math.max(180, width)) }),
     setInspectorWidth: (width) => set({ inspectorWidth: Math.min(520, Math.max(220, width)) }),
     setTerminalHeight: (height) => set({ terminalHeight: Math.min(560, Math.max(120, height)) }),
     openFile: (openFilePath) => set({ openFilePath, centerTab: "code" }),
-    saveFileEdit: (path, value) => set((s) => ({ editedFiles: { ...s.editedFiles, [path]: value } })),
-    decideFileChange: (path, v) => {
-      const prev = get().fileChangeDecisions[path] ?? "pending";
-      set((s) => ({
-        fileChangeDecisions: { ...s.fileChangeDecisions, [path]: v },
-        fileChangeHistory: [...s.fileChangeHistory, { path, prev }],
-      }));
-      get().appendTerminalLine({ kind: v === "accepted" ? "ok" : "err", text: `${v === "accepted" ? "applied" : "rejected"} ${path}` });
+    runTerminalCommand: (cmd, options = {}) => {
+      const command = cmd.trim();
+      const project = get().project;
+      if (!command || !project || get().terminalBusy) return;
+      get().appendTerminalLine({ kind: "cmd", text: `$ ${command}` });
+      runCommandWithOptions(command, options);
     },
-    undoLastFileChange: () => {
-      const h = get().fileChangeHistory;
-      const last = h[h.length - 1];
-      if (!last) { set({ notice: "Nothing to undo" }); return; }
-      set((s) => ({
-        fileChangeDecisions: { ...s.fileChangeDecisions, [last.path]: last.prev },
-        fileChangeHistory: s.fileChangeHistory.slice(0, -1),
-        notice: `Undone: ${last.path}`,
-      }));
-    },
-
-    sendDraftToSampleAgent: () => {
-      const text = get().draft.trim();
-      if (!text) return;
-      set({ draft: "" });
-      sampleAgent().send(text);
-    },
-    runSampleTask: () => sampleAgent().start(),
-    pauseAgent: () => sampleAgent().pause(),
-    resumeAgent: () => sampleAgent().resume(),
-    stopAgent: () => sampleAgent().stop(),
-    decideApproval: (id, v) => sampleAgent().decide(id, v),
-    runTerminalCommand: (cmd) => sampleAgent().runCommand(cmd),
     startNewTask: () => {
-      sampleAgent().stop();
-      set((s) => ({
-        agentStatus: "idle", agentStep: 0, agentEvents: [], approvals: [], changes: [], fileChangeDecisions: {}, fileChangeHistory: [],
-        chat: [...s.chat, { id: createUniqueId("m"), from: "sys", text: "New task started. Describe what you want to build, then press Run." }],
-        centerTab: "chat", screen: "workspace",
-      }));
+      get().cancelTaskStream?.();
+      const project = get().project;
+      set({
+        taskId: null, needsProvider: false, agentStatus: "idle", agentStep: 0, agentEvents: [],
+        approvals: [], changes: [], cancelTaskStream: null, centerTab: "chat", screen: project ? "workspace" : "welcome",
+        chat: project ? welcomeChat(project) : [],
+      });
     },
     setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
     setSidebarCollapsedPreference: (sidebarCollapsedPreference) => { writeStoredFlag("owl-sb-collapsed", sidebarCollapsedPreference); set({ sidebarCollapsedPreference }); },
@@ -191,10 +247,5 @@ export const useAppStore = create<AppState>((set, get) => {
     setTerminalTab: (terminalTab) => set({ terminalTab, terminalOpen: true }),
     clearTerminal: () => set({ terminal: [] }),
     setEditorTabs: (editorTabs) => set({ editorTabs }),
-    stopLiveReply: () => {
-      const c = get().cancelLiveReply;
-      if (c) c();
-      set({ liveReplyInProgress: false, cancelLiveReply: null, notice: "Stopped generating" });
-    },
   };
 });
