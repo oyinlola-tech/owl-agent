@@ -46,46 +46,39 @@ export function MemoryScreen() {
   const [newConfirmed, setNewConfirmed] = useState(true);
   const [newError, setNewError] = useState("");
 
-  const filterSampleMemories = (sampleRows: MemoryRow[]) => sampleRows.filter((memory) =>
-    (!projectFilter.trim() || !memory.project || memory.project.toLowerCase() === projectFilter.trim().toLowerCase())
-    && (!searchQuery.trim() || memory.text.toLowerCase().includes(searchQuery.trim().toLowerCase())));
-
   const loadMemories = async () => {
-    const memoryResult = await loadWithSampleFallback(
-      searchQuery.trim() ? agentApi.searchMemories(searchQuery.trim(), projectFilter.trim()) : agentApi.memories("", projectFilter.trim()),
-      filterSampleMemories(SAMPLE_MEMORIES),
-    );
-    setMemories(memoryResult.data);
-    setIsSampleData(memoryResult.demo);
+    try {
+      const rows = await (searchQuery.trim()
+        ? agentApi.searchMemories(searchQuery.trim(), projectFilter.trim())
+        : agentApi.memories("", projectFilter.trim()));
+      setMemories(rows);
+    } catch {
+      setMemories([]);
+    }
     setLoaded(true);
-    const historyResult = await loadWithSampleFallback(agentApi.memoryHistory(), SAMPLE_MEMORY_HISTORY);
-    setMemoryHistory(historyResult.data);
+    setMemoryHistory(await agentApi.memoryHistory().catch(() => [] as MemoryHistoryRow[]));
   };
   useEffect(() => { void loadMemories(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
   const visibleMemories = memories.filter((memory) => !categoryFilter || memory.category === categoryFilter);
   const countInCategory = (category: string) => (category ? memories.filter((memory) => memory.category === category).length : memories.length);
-  const applySampleChange = (message: string, applyChange: () => void) => { applyChange(); showNotice(`${message}. ${SAMPLE_SAVE_NOTICE}`); };
 
   const confirmAndDeleteMemory = (memory: MemoryRow) => askForConfirmation({
     title: "Delete this memory?",
     body: `"${memory.text.slice(0, 120)}" will no longer guide the agent. This can't be undone.`,
     confirmLabel: "Delete memory",
     run: async () => {
-      if (isSampleData) { applySampleChange("Deleted", () => setMemories((currentMemories) => currentMemories.filter((existing) => existing.id !== memory.id))); return; }
       try { await agentApi.deleteMemory(memory.id); setMemories((currentMemories) => currentMemories.filter((existing) => existing.id !== memory.id)); showNotice("Memory deleted"); }
       catch { showNotice("The memory service didn't answer."); }
     },
   });
   const toggleMemoryEnabled = async (memory: MemoryRow) => {
     const applyChange = () => setMemories((currentMemories) => currentMemories.map((existing) => (existing.id === memory.id ? { ...existing, enabled: existing.enabled ? 0 : 1 } : existing)));
-    if (isSampleData) { applySampleChange(memory.enabled ? "Disabled" : "Enabled", applyChange); return; }
     try { await agentApi.setMemoryEnabled(memory.id, !memory.enabled); applyChange(); }
     catch { showNotice("The memory service didn't answer."); }
   };
   const saveMemoryEdit = async (id: string) => {
     if (!editDraft.trim()) return;
-    if (isSampleData) { applySampleChange("Saved", () => setMemories((currentMemories) => currentMemories.map((existing) => (existing.id === id ? { ...existing, text: editDraft.trim() } : existing)))); setEditingId(null); return; }
     try {
       const updated = await agentApi.updateMemory(id, editDraft.trim());
       setMemories((currentMemories) => currentMemories.map((existing) => (existing.id === id ? updated : existing)));
@@ -96,12 +89,6 @@ export function MemoryScreen() {
     if (!newText.trim()) { setNewError("Write the fact you want OWL to remember."); return; }
     setNewError("");
     const memoryProject = newCategory === "global" ? "" : projectFilter.trim();
-    if (isSampleData) {
-      const now = new Date().toISOString();
-      applySampleChange("Saved", () => setMemories((currentMemories) => [{ id: `mem_local_${Date.now()}`, category: newCategory, project: memoryProject, text: newText.trim(), confirmed: newConfirmed ? 1 : 0, enabled: 1, source: "user", created_at: now, updated_at: now }, ...currentMemories]));
-      setNewText(""); setIsAdding(false);
-      return;
-    }
     try {
       const result = await agentApi.saveMemory(newCategory, newText.trim(), memoryProject, newConfirmed);
       if (!result.saved || !result.memory) { setNewError(result.reason ? `Not saved: ${result.reason}` : "Not saved."); return; }
@@ -111,12 +98,10 @@ export function MemoryScreen() {
     } catch { setNewError("The memory service didn't answer. Start it, then save again."); }
   };
   const clearProjectMemories = async () => {
-    if (isSampleData) { applySampleChange(`Cleared ${projectFilter} memories`, () => setMemories((currentMemories) => currentMemories.filter((memory) => !(memory.category === "project" && memory.project === projectFilter.trim())))); return; }
     try { const result = await agentApi.clearProjectMemory(projectFilter.trim()); showNotice(`Cleared ${result.cleared} project memories`); void loadMemories(); }
     catch { showNotice("The memory service didn't answer."); }
   };
   const tidyMemories = async () => {
-    if (isSampleData) { setTidyResultMessage(`Scanned ${memories.length}, merged 0. ${SAMPLE_SAVE_NOTICE}`); return; }
     try { const result = await agentApi.maintainMemory(projectFilter.trim()); setTidyResultMessage(`Scanned ${result.scanned} memories, merged ${result.merged} duplicates.`); void loadMemories(); }
     catch { showNotice("The memory service didn't answer."); }
   };
@@ -137,7 +122,6 @@ export function MemoryScreen() {
           <button className="btn btn-primary" onClick={() => { setIsAdding(true); setView("list"); }}><Plus size={15} weight="bold" /> New memory</button>
         </>}
       />
-      {isSampleData && <SampleDataBanner onRetry={() => void loadMemories()} what="memory" />}
 
       <div className="pg-cats">
         {(Object.keys(CATEGORY_STYLE)).map((category) => {
