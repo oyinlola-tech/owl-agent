@@ -2,7 +2,7 @@ import asyncio
 import time
 
 import pytest
-from supports.browserLocalSite_support import serve_local_site
+from supports.browser.browserLocalSite_support import serve_local_site
 from supports.taskClient_support import ScriptedMockProvider, make_test_client, wait_for_task_status
 
 from app.guards.workspaceAccess_guard import WorkspaceAccessGuard, WorkspaceError

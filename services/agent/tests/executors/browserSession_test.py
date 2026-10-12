@@ -2,7 +2,7 @@ import asyncio
 import os
 
 import pytest
-from supports.browserLocalSite_support import INJECTION_TEXT, PAGE_MARKER, serve_local_site
+from supports.browser.browserLocalSite_support import INJECTION_TEXT, PAGE_MARKER, serve_local_site
 
 from app.executors.browserExecutor_executor import BrowserError
 from app.executors.browsing.browserExtraction_executor import extract_from_page
@@ -73,7 +73,6 @@ def test_interactions_type_select_click_navigates(tmp_path):
                 assert waited["action"] == "wait"
                 clicked = await click_target(session, 'a[href="/other"]')
                 assert clicked["url"].endswith("/other")
-                # Same-origin navigation is not flagged as an external-origin hop.
                 assert "external_navigation" not in clicked
                 title = await extract_from_page(session, "title")
                 assert title["title"] == "Other Page"

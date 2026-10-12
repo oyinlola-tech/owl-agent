@@ -6,9 +6,7 @@ import {
 import { useAppStore } from "../../../state/app.store";
 import { ApiError, agentApi } from "../../../services/agentApi.service";
 import type { BackendTask, JournalRow } from "../../../services/agentApi.types";
-import { SAMPLE_JOURNAL, SAMPLE_BACKEND_TASKS, sampleTaskDetailFor } from "../../../services/samples/sampleTasks.data";
-import { loadWithSampleFallback, SAMPLE_SAVE_NOTICE_SHORT } from "../../../services/samples/sampleMode.helper";
-import { SampleDataBanner, EmptyState, PageHeader } from "../../../../shared/components/pageLayout.component";
+import { EmptyState, PageHeader } from "../../../../shared/components/pageLayout.component";
 import { Tag } from "../../../../shared/components/tag.component";
 import { FilePath } from "../../../components/filePath.component";
 import { StatCard } from "../../../components/statCard.component";
@@ -28,7 +26,6 @@ export function ChangeHistoryScreen() {
   const goToScreen = useAppStore((s) => s.goToScreen);
 
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
-  const [isSampleData, setIsSampleData] = useState(false);
   const [loading, setLoading] = useState(true);
   const [projectFilter, setProjectFilter] = useState("");
   const [pathFilter, setPathFilter] = useState("");
@@ -39,26 +36,18 @@ export function ChangeHistoryScreen() {
 
   const loadHistory = useCallback(async () => {
     setLoading(true);
-    const taskResult = await loadWithSampleFallback(agentApi.backendTasks(), SAMPLE_BACKEND_TASKS);
+    const tasks = await agentApi.backendTasks().catch(() => [] as BackendTask[]);
     const loadedEntries: HistoryEntry[] = [];
-    await Promise.all(taskResult.data.map(async (task) => {
-      let journalRows: JournalRow[];
-      let checkpoints: CheckpointRow[];
-      if (taskResult.demo) {
-        journalRows = SAMPLE_JOURNAL[task.id] ?? [];
-        checkpoints = sampleTaskDetailFor(task.id).checkpoints;
-      } else {
-        [journalRows, checkpoints] = await Promise.all([
-          agentApi.journal(task.id).catch(() => [] as JournalRow[]),
-          agentApi.checkpoints(task.id).catch(() => [] as CheckpointRow[]),
-        ]);
-      }
+    await Promise.all(tasks.map(async (task) => {
+      const [journalRows, checkpoints] = await Promise.all([
+        agentApi.journal(task.id).catch(() => [] as JournalRow[]),
+        agentApi.checkpoints(task.id).catch(() => [] as CheckpointRow[]),
+      ]);
       journalRows.forEach((row) => loadedEntries.push({ type: "change", at: row.applied_at, task, row }));
       checkpoints.forEach((checkpoint) => loadedEntries.push({ type: "checkpoint", at: checkpoint.created_at, task, id: checkpoint.id, label: checkpoint.label }));
     }));
     loadedEntries.sort((a, b) => b.at.localeCompare(a.at));
     setEntries(loadedEntries);
-    setIsSampleData(taskResult.demo);
     setRevertedAtById({});
     setErrorsById({});
     setLoading(false);

@@ -88,7 +88,6 @@ export function ModelsUsageScreen() {
   };
 
   const validateModel = async (id: string) => {
-    if (isSampleData) { showNotice(SAMPLE_SAVE_NOTICE_SHORT); return; }
     setValidationById((current) => ({ ...current, [id]: { busy: true } }));
     try {
       const result = await agentApi.validateModel(id);
@@ -121,7 +120,6 @@ export function ModelsUsageScreen() {
           <ArrowClockwise size={15} /> {refreshing ? "Refreshing…" : "Refresh registry"}
         </button>}
       />
-      {isSampleData && <SampleDataBanner what="this page" onRetry={() => void loadModelsAndUsage()} />}
 
       <div className="x-stats">
         <StatCard icon={ArrowUp} hue="blue" label="Tokens sent" value={formatTokenCount(usageTotals.input)} sub="Prompts and context" />

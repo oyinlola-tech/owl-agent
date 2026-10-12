@@ -8,6 +8,7 @@ const SETTINGS_SECTIONS: { name: string; heading?: string }[] = [
   { name: "Workspaces", heading: "Authorized folders" },
   { name: "Security", heading: "Approvals" },
   { name: "Git", heading: "Checkpoints and commits" },
+  { name: "Data" },
   { name: "Notifications", heading: "When to tell you" },
   { name: "Keyboard", heading: "Shortcuts" },
   { name: "Advanced", heading: "Service" },

@@ -34,7 +34,6 @@ async def submit_form(session: IsolatedBrowserSession, target: str) -> dict:
             else:
                 await locator.click(timeout=ACTION_TIMEOUT_MS)
     except Exception:
-        # A submit that updates the page in place triggers no top-level navigation.
         pass
     # Security: the destination after a submit is re-checked against the SSRF guard.
     await asyncio.to_thread(
