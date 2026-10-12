@@ -153,3 +153,81 @@ Tests: adapter request shapes with mocked HTTP for every preset (base URL, auth 
 model list parsing); Anthropic adapter with a mocked SDK client: system mapping, no
 thinking/temperature params sent, effort set, refusal handling, fallback params present and
 removable, typed-error mapping, usage capture, key never in logs/responses.
+
+# Part F: no mock data in the app (owner request)
+
+The installed app must never show invented data. Today 36 files under
+apps/desktop/src/desktop use sample/mock data (workspace chat replay, terminal, file tree,
+projects, home, inbox, tasks, memory, models, palette, project switcher...), and the backend
+silently falls back to a mock model when no provider is configured.
+
+Rules:
+- The desktop app talks only to the real local service. If the service isn't reachable, show
+  a clear "OWL's local service isn't running" state with Retry and what to do — never sample
+  data. Empty data shows a designed empty state with the next action ("Open your first
+  project"), never fake rows.
+- The mock model provider exists only for tests (selected explicitly by test settings / an
+  `OWL_PROVIDER=mock` env var). With no provider configured, the service reports
+  `provider: none`, chat/tasks return a clear "Connect a model first" error, and the app shows
+  the provider setup instead.
+- Static product content is fine (playbook recipes, the stack catalog, keyboard shortcuts):
+  it's real content, not fake activity. The marketing website may keep its illustrative demo.
+- Delete apps/desktop/src/desktop/services/samples/*, mockAgent.service.ts, seed data
+  (ZudoMart/ProofLens/Scriptune), terminalSample.data.ts, and every `loadWithSampleFallback`.
+
+New backend capabilities (all under the service token, JSON, workspace guard + sandbox):
+- Projects: `GET/POST /projects` (add an existing folder: validates it, authorizes it as a
+  workspace root persisted in the DB alongside OWL_WORKSPACES, detects stack with the
+  verification detectors), `DELETE /projects/{id}` (forgets it, never deletes files),
+  `PATCH /projects/{id}` (rename, last opened). The folder comes from the Tauri dialog
+  plugin's folder picker (add `@tauri-apps/plugin-dialog`, capability scoped to the main
+  window). Protected locations (home root, /, system dirs, ~/.ssh...) are refused.
+- Files: `GET /projects/{id}/tree?path=` (one level, gitignore-aware, sensitive files
+  hidden), `GET /projects/{id}/file?path=` (text only, size-capped, sensitive refused),
+  `PUT /projects/{id}/file` for the USER's own edits from the code editor (journaled with
+  source "user", not via agent approvals), `GET /projects/{id}/search?q=` (bounded).
+- Git: `GET /projects/{id}/git` (branch, ahead/behind, changed files) via the existing
+  sandboxed git executor.
+- Commands for the user: `POST /projects/{id}/commands` runs a user-typed command through the
+  sandboxed executor (argv parsed with shlex; same risk assessment: refused stays refused,
+  high-risk needs a confirm flag from the UI), streamed via SSE; history persisted. This is
+  the Terminal panel (non-interactive; say so). Agent command output shows real tool calls.
+- Chat in the workspace = real tasks: sending a message creates/continues a task for the
+  open project (`POST /tasks`, `POST /tasks/{id}/messages`) and renders the SSE events.
+
+Frontend:
+- Data layer: one hook per resource over the real API (loading / empty / error / offline /
+  unauthorized states), no sample fallback.
+- QA: the Playwright suite runs against a real service started per run (temp data dir, temp
+  workspace with a small real project, mock provider via `OWL_PROVIDER=mock` for
+  deterministic agent replies — tests only). Keep every current flow covered.
+
+# Part G: onboarding (first run), designed properly
+
+Shown when the profile is empty or no provider/project exists. Full-window flow, not a modal:
+left progress rail (step names, current/done states, OWL mark), right content panel (max
+~640px), sticky footer with Back / Continue (Continue disabled until the step is valid;
+"Set up later" where skipping is safe). Keyboard accessible (Enter continues, focus moves to
+the step heading), screen-reader announcements, light/dark, works from 960px wide, reduced
+motion respected, uses the existing tokens/typography (serif display headings).
+
+Steps:
+1. Welcome — owl mark, one-sentence promise ("An AI engineer that shows its work and waits
+   for your approval"), three short trust points (runs on your machine, every change is a
+   diff you approve, OWL checks its own work), "Get started".
+2. About you — name (used in greetings), role, experience, languages/frameworks as chips,
+   code style + test framework (optional). Saved to `PUT /profile`.
+3. Connect a model — cards for Claude, OpenAI, Gemini, Grok, Groq, NVIDIA, OpenRouter, and
+   Local (Ollama / LM Studio, detected live with status). Selecting one opens the key field
+   (password, paste, "where do I get a key" link), Test connection (shows latency + model
+   count, or the exact plain-language error), pick a model. "Set up later" allowed: then chat
+   shows a clear "Connect a model" call to action.
+4. Your first project — "Choose a folder" (native picker) → shows the detected stack and the
+   checks OWL can run (verification detectors), or "Start a new project" (stack advisor,
+   Part D). Refused locations explain why.
+5. Safety check — live `/security/status`: sandbox on/off and backend, network policy,
+   approvals required, where data and keys are stored; on Windows/no-sandbox explain plainly.
+6. Done — summary of choices, "Open <project>" lands in the workspace with the composer
+   focused and a suggested first prompt based on the detected stack.
+Re-runnable from Settings ("Run setup again"). Persist progress so a restart resumes the step.
+Tests: unit tests per step validation; QA walks the whole flow against the real service.

@@ -174,7 +174,16 @@ All images are real captures of the current build (the app was running without t
 
 Full details: [docs/INSTALL.md](docs/INSTALL.md).
 
-**Download page.** The website's `/download` page links to the newest release files for your system.
+**One-click download.** The website's **Download for Windows / macOS / Linux** button picks your system and starts the download straight away. The same files have stable links that always point at the newest published release:
+
+| System | Website link | Direct link |
+| --- | --- | --- |
+| Windows x64 | `/download/windows` (`/download/windows-msi` for the MSI) | [OWL-Agent-Setup-x64.exe](https://github.com/oyinlola-tech/owl-agent/releases/latest/download/OWL-Agent-Setup-x64.exe) · [OWL-Agent-x64.msi](https://github.com/oyinlola-tech/owl-agent/releases/latest/download/OWL-Agent-x64.msi) |
+| macOS Apple silicon | `/download/mac` | [OWL-Agent-macOS-AppleSilicon.dmg](https://github.com/oyinlola-tech/owl-agent/releases/latest/download/OWL-Agent-macOS-AppleSilicon.dmg) |
+| macOS Intel | `/download/mac-intel` | [OWL-Agent-macOS-Intel.dmg](https://github.com/oyinlola-tech/owl-agent/releases/latest/download/OWL-Agent-macOS-Intel.dmg) |
+| Linux x64 | `/download/linux` (`/download/linux-deb`, `/download/linux-rpm`) | [OWL-Agent-Linux-x64.AppImage](https://github.com/oyinlola-tech/owl-agent/releases/latest/download/OWL-Agent-Linux-x64.AppImage) · [.deb](https://github.com/oyinlola-tech/owl-agent/releases/latest/download/OWL-Agent-Linux-x64.deb) · [.rpm](https://github.com/oyinlola-tech/owl-agent/releases/latest/download/OWL-Agent-Linux-x64.rpm) |
+
+These links only work once a release is published (GitHub ignores drafts and pre-releases for `/releases/latest`). The `/download` page also lists every versioned file and `SHA256SUMS.txt`, which covers both names.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshots/website/downloadPage.dark.png">
@@ -198,7 +207,7 @@ Options: `OWL_VERSION=v0.1.0`, `OWL_INSTALL_FORMAT`, `OWL_SKIP_CHECKSUM=1` (not 
 **GitHub CLI.**
 
 ```sh
-gh release download --repo oyinlola-tech/owl-agent --pattern 'SHA256SUMS.txt' --pattern 'OWL_*_amd64.AppImage'
+gh release download --repo oyinlola-tech/owl-agent --pattern 'SHA256SUMS.txt' --pattern 'OWL-Agent-Linux-x64.AppImage'
 sha256sum --check --ignore-missing SHA256SUMS.txt
 ```
 
@@ -206,8 +215,8 @@ sha256sum --check --ignore-missing SHA256SUMS.txt
 
 | System | Files | Verify |
 | --- | --- | --- |
-| Windows x64 | `OWL_<version>_x64-setup.exe`, `OWL_<version>_x64_en-US.msi` | `(Get-FileHash .\<file> -Algorithm SHA256).Hash.ToLower()` |
-| macOS (Apple silicon / Intel) | `OWL_<version>_aarch64.dmg`, `OWL_<version>_x64.dmg` | `shasum -a 256 --check --ignore-missing SHA256SUMS.txt` |
+| Windows x64 | `OWL.Agent_<version>_x64-setup.exe`, `OWL.Agent_<version>_x64_en-US.msi` | `(Get-FileHash .\<file> -Algorithm SHA256).Hash.ToLower()` |
+| macOS (Apple silicon / Intel) | `OWL.Agent_<version>_aarch64.dmg`, `OWL.Agent_<version>_x64.dmg` | `shasum -a 256 --check --ignore-missing SHA256SUMS.txt` |
 | Linux x64 | `.AppImage`, `.deb`, `.rpm` | `sha256sum --check --ignore-missing SHA256SUMS.txt` |
 
 ### Build from source

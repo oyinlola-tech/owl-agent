@@ -27,8 +27,34 @@ Releases are published at
 
 ## 1. Download page
 
-The website's `/download` page links to the newest release files for your
-system. It uses the same release files as every method below.
+The website's home page has a **Download for Windows / macOS / Linux** button
+that picks your system and starts the download in one click. The `/download`
+page has the same buttons for every system, plus the full list of versioned
+files and `SHA256SUMS.txt` for the newest release.
+
+Every release also carries a copy of each installer under a stable name, so
+these links always fetch the newest published release:
+
+| System | One-click link on the website | Stable file name |
+| --- | --- | --- |
+| Windows x64 (installer) | `/download/windows` | `OWL-Agent-Setup-x64.exe` |
+| Windows x64 (MSI) | `/download/windows-msi` | `OWL-Agent-x64.msi` |
+| macOS Apple silicon | `/download/mac` | `OWL-Agent-macOS-AppleSilicon.dmg` |
+| macOS Intel | `/download/mac-intel` | `OWL-Agent-macOS-Intel.dmg` |
+| Linux x64 AppImage | `/download/linux` | `OWL-Agent-Linux-x64.AppImage` |
+| Linux x64 Debian / Ubuntu | `/download/linux-deb` | `OWL-Agent-Linux-x64.deb` |
+| Linux x64 Fedora / RHEL | `/download/linux-rpm` | `OWL-Agent-Linux-x64.rpm` |
+
+The website links are temporary (302) redirects to
+`https://github.com/oyinlola-tech/owl-agent/releases/latest/download/<stable file name>`,
+which you can also use directly, for example
+<https://github.com/oyinlola-tech/owl-agent/releases/latest/download/OWL-Agent-Setup-x64.exe>.
+The stable copies are byte-for-byte the same as the versioned files and are
+listed in `SHA256SUMS.txt` under both names.
+
+GitHub's `/releases/latest/download/...` only serves the newest **published**
+release (not a draft, not a pre-release). Until the first release is published
+these links answer 404.
 
 ## 2. One-line installers
 
@@ -57,10 +83,10 @@ What it installs:
 
 | System | File used | Where it goes |
 | --- | --- | --- |
-| macOS Apple silicon | `OWL_<version>_aarch64.dmg` | `/Applications/OWL.app` (or `~/Applications` if `/Applications` is not writable) |
-| macOS Intel | `OWL_<version>_x64.dmg` | same as above |
-| Linux x64 (default) | `OWL_<version>_amd64.AppImage` | `~/.local/bin/owl`, plus a menu entry in `~/.local/share/applications/owl.desktop` and an icon |
-| Linux x64, `OWL_INSTALL_FORMAT=deb` | `OWL_<version>_amd64.deb` | system-wide through `sudo dpkg -i` |
+| macOS Apple silicon | `OWL.Agent_<version>_aarch64.dmg` | `/Applications/OWL Agent.app` (or `~/Applications` if `/Applications` is not writable) |
+| macOS Intel | `OWL.Agent_<version>_x64.dmg` | same as above |
+| Linux x64 (default) | `OWL.Agent_<version>_amd64.AppImage` | `~/.local/bin/owl-agent`, plus a menu entry in `~/.local/share/applications/owl-agent.desktop` and icons |
+| Linux x64, `OWL_INSTALL_FORMAT=deb` | `OWL.Agent_<version>_amd64.deb` | system-wide through `sudo dpkg -i` |
 | Linux x64, `OWL_INSTALL_FORMAT=rpm` | `OWL-<version>-1.x86_64.rpm` | system-wide through `sudo rpm -i` |
 
 Options (environment variables):
@@ -87,7 +113,7 @@ on Ubuntu 22.04 and later).
 irm https://raw.githubusercontent.com/oyinlola-tech/owl-agent/main/scripts/install/owl.install.ps1 | iex
 ```
 
-It downloads `OWL_<version>_x64-setup.exe`, checks it with `Get-FileHash`,
+It downloads `OWL.Agent_<version>_x64-setup.exe`, checks it with `Get-FileHash`,
 and starts the installer. To use the MSI instead:
 
 ```powershell
@@ -101,14 +127,14 @@ work like the options above.
 ## 3. GitHub CLI
 
 ```sh
-gh release download --repo oyinlola-tech/owl-agent --pattern 'SHA256SUMS.txt' --pattern 'OWL_*_amd64.AppImage'
+gh release download --repo oyinlola-tech/owl-agent --pattern 'SHA256SUMS.txt' --pattern 'OWL-Agent-Linux-x64.AppImage'
 sha256sum --check --ignore-missing SHA256SUMS.txt
 ```
 
-Change the second `--pattern` for your system: `'OWL_*_aarch64.dmg'`,
-`'OWL_*_x64.dmg'`, `'OWL_*_amd64.deb'`, `'OWL-*.x86_64.rpm'`,
-`'OWL_*_x64-setup.exe'` or `'OWL_*_x64_*.msi'`. Add a tag (for example
-`gh release download v0.1.0 ...`) to pick a version.
+Change the second `--pattern` to the stable file name for your system (see the
+table in [Download page](#1-download-page)), for example
+`'OWL-Agent-macOS-AppleSilicon.dmg'` or `'OWL-Agent-Setup-x64.exe'`. Add a tag
+(for example `gh release download v0.1.0 ...`) to pick a version.
 
 ## 4. Manual install
 
@@ -117,8 +143,8 @@ Download the file for your system and `SHA256SUMS.txt` from the release page,
 
 ### Windows
 
-Run `OWL_<version>_x64-setup.exe` (installs for your user only) or
-`OWL_<version>_x64_en-US.msi` (installs for all users, needs admin rights).
+Run `OWL.Agent_<version>_x64-setup.exe` (installs for your user only) or
+`OWL.Agent_<version>_x64_en-US.msi` (installs for all users, needs admin rights).
 
 Because the installer is not signed, SmartScreen may show
 "Windows protected your PC". Click **More info**, then **Run anyway**.
@@ -146,8 +172,8 @@ The install script never does this for you.
 
 ### Linux
 
-- AppImage: `chmod +x OWL_<version>_amd64.AppImage` and run it.
-- Debian / Ubuntu: `sudo apt install ./OWL_<version>_amd64.deb`
+- AppImage: `chmod +x OWL.Agent_<version>_amd64.AppImage` and run it.
+- Debian / Ubuntu: `sudo apt install ./OWL.Agent_<version>_amd64.deb`
 - Fedora / openSUSE: `sudo rpm -i OWL-<version>-1.x86_64.rpm`
 
 ## Check a download
@@ -159,8 +185,8 @@ Every release has `SHA256SUMS.txt`, one `<sha256>  <file name>` line per file.
 - Windows (PowerShell):
 
   ```powershell
-  (Get-FileHash .\OWL_0.1.0_x64-setup.exe -Algorithm SHA256).Hash.ToLower()
-  Select-String "OWL_0.1.0_x64-setup.exe" .\SHA256SUMS.txt
+  (Get-FileHash .\OWL.Agent_0.1.0_x64-setup.exe -Algorithm SHA256).Hash.ToLower()
+  Select-String "OWL.Agent_0.1.0_x64-setup.exe" .\SHA256SUMS.txt
   ```
 
   The two hashes must be the same.
@@ -256,8 +282,17 @@ parent process goes away.
 `.github/workflows/desktop-release.yml` runs on a `v*` tag push, or by hand
 from the Actions tab. It builds the sidecar and the installers on Windows,
 macOS (Apple silicon and Intel) and Linux, attaches them to a draft GitHub
-release, then adds `SHA256SUMS.txt`. Publish the draft when you have checked
-it. The one-line installers only see published releases.
+release. A final job copies each installer to its stable name
+(`OWL-Agent-Setup-x64.exe`, `OWL-Agent-x64.msi`,
+`OWL-Agent-macOS-AppleSilicon.dmg`, `OWL-Agent-macOS-Intel.dmg`,
+`OWL-Agent-Linux-x64.AppImage`, `OWL-Agent-Linux-x64.deb`,
+`OWL-Agent-Linux-x64.rpm`), uploads the copies, and writes `SHA256SUMS.txt`
+for both the versioned and the stable files. It fails if any expected
+installer is missing.
+
+**Publish the draft when you have checked it.** The website's one-click
+buttons, `/releases/latest/download/...` links and the one-line installers only
+see the newest published (non-draft, non-pre-release) release.
 
 ## What has not been verified
 

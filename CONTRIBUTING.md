@@ -12,13 +12,17 @@ Security issues: do not open a public issue. Follow [SECURITY.md](SECURITY.md).
 cd services/agent
 python3 -m venv .venv
 .venv/bin/pip install -e ".[dev]"
-.venv/bin/python -m uvicorn --factory app:create_app --port 8000
+OWL_DEV_TOKEN=local-dev-token-change-me .venv/bin/python -m uvicorn --factory app:create_app --port 8000
 
 # Frontend: Node 22.12+ (the test runner needs it)
 cd apps/desktop
 npm install
-npm run dev
+VITE_OWL_DEV_TOKEN=local-dev-token-change-me npm run dev
 ```
+
+The local service accepts requests only with its token. In the desktop app the token is
+generated for you; in a browser dev session both commands above must use the same value
+(16 characters or more).
 
 Building the desktop app also needs Rust and, on Linux, the WebKitGTK development packages.
 See [docs/INSTALL.md](docs/INSTALL.md).
