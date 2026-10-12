@@ -1,15 +1,15 @@
 import {
-  ArrowRight, BookOpenText, CaretRight, ChartBar, Check, CheckCircle, Eye, Keyboard, PencilSimple, ShieldWarning,
-  Sparkle, SpinnerGap, Tray, X,
+  ArrowRight, BookOpenText, CaretRight, ChartBar, CheckCircle, Eye, Keyboard, PencilSimple, ShieldWarning,
+  Sparkle, SpinnerGap, Tray,
 } from "@phosphor-icons/react";
 import { useAppStore } from "../../state/app.store";
-import type { Approval } from "../../state/workspace.types";
+import type { BackendTask } from "../../services/agentApi.types";
 import { StatusTag } from "../../../shared/components/statusTag.component";
 import { Tag, Tile } from "../../../shared/components/tag.component";
 import type { PendingBackendApproval } from "./backendWork.hook";
 
 interface HomeOverviewRailProps {
-  localPendingApprovals: Approval[];
+  backendTasks: BackendTask[];
   backendPendingApprovals: PendingBackendApproval[];
   pendingCount: number;
   runningCount: number;
@@ -17,15 +17,11 @@ interface HomeOverviewRailProps {
 }
 
 export function HomeOverviewRail({
-  localPendingApprovals, backendPendingApprovals, pendingCount, runningCount, completedCount,
+  backendTasks, backendPendingApprovals, pendingCount, runningCount, completedCount,
 }: HomeOverviewRailProps) {
   const goToScreen = useAppStore((s) => s.goToScreen);
-  const decideApproval = useAppStore((s) => s.decideApproval);
-  const openTask = useAppStore((s) => s.openTask);
   const openBackendTask = useAppStore((s) => s.openBackendTask);
-  const tasks = useAppStore((s) => s.tasks);
-  const project = useAppStore((s) => s.project);
-  const currentTask = tasks[0];
+  const currentTask = backendTasks.find((task) => task.status === "running" || task.status === "awaiting_approval") ?? backendTasks[0];
 
   return (
     <aside className="pg-home-rail" aria-label="Overview">
@@ -35,17 +31,7 @@ export function HomeOverviewRail({
           <p className="pg-rail-empty"><CheckCircle size={16} color="var(--green)" weight="duotone" /> Nothing is waiting on you.</p>
         ) : (
           <ul className="pg-needs">
-            {localPendingApprovals.slice(0, 2).map((approval) => (
-              <li key={approval.id}>
-                <span className="t"><ShieldWarning size={15} color="var(--orange)" weight="duotone" /><b>{approval.title}</b></span>
-                <span className="s">{approval.command ? <code>{approval.command}</code> : `${approval.files?.length ?? 0} files · ${project?.name ?? "ZudoMart"}`}</span>
-                <span className="r">
-                  <button className="btn btn-ghost btn-sm" onClick={() => decideApproval(approval.id, "rejected")}><X size={13} /> Reject</button>
-                  <button className="btn btn-primary btn-sm" onClick={() => decideApproval(approval.id, "approved")}><Check size={13} weight="bold" /> Approve</button>
-                </span>
-              </li>
-            ))}
-            {backendPendingApprovals.slice(0, Math.max(0, 3 - localPendingApprovals.length)).map(({ task, approval }) => (
+            {backendPendingApprovals.slice(0, 3).map(({ task, approval }) => (
               <li key={approval.id}>
                 <span className="t"><ShieldWarning size={15} color="var(--orange)" weight="duotone" /><b>{approval.title}</b></span>
                 <span className="s">{approval.command ? <code>{approval.command}</code> : task.prompt}</span>
@@ -69,8 +55,8 @@ export function HomeOverviewRail({
           <button className="pg-stat" onClick={() => goToScreen("tasks")}><Tile icon={CheckCircle} hue="green" /><span><b>{completedCount}</b><span className="l">Completed</span></span></button>
         </div>
         {currentTask && (
-          <button className="pg-current" onClick={() => openTask(currentTask.id)}>
-            <span className="t"><StatusTag status={currentTask.status} /><b>{currentTask.name}</b></span>
+          <button className="pg-current" onClick={() => openBackendTask(currentTask.id)}>
+            <span className="t"><StatusTag status={currentTask.status} /><b>{currentTask.prompt}</b></span>
             <span className="pg-progress"><span className="progress"><i style={{ width: `${currentTask.progress}%` }} /></span><span className="pg-pct">{currentTask.progress}%</span></span>
           </button>
         )}

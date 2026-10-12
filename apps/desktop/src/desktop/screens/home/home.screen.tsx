@@ -4,16 +4,17 @@ import {
   Rocket, SealCheck, ShieldWarning, SpinnerGap, Wrench, X, XCircle, type Icon,
 } from "@phosphor-icons/react";
 import { useAppStore } from "../../state/app.store";
-import { PROJECTS } from "../../services/samples/sampleWorkspace.data";
 import { pendingApprovalKey, usePendingApprovalsStore } from "../../state/pendingApprovals.store";
 import { isFinishedStatus, hueForStatus } from "../../../shared/components/statusTag.component";
 import { EmptyState } from "../../../shared/components/pageLayout.component";
 import { OwlMark } from "../../../shared/components/owlMark.component";
 import { Tag, Tile, type Hue } from "../../../shared/components/tag.component";
 import { formatShortTimeAgo } from "../../../shared/helpers/time.helper";
+import { useProjects } from "../../hooks/useProjects.hook";
+import { useDisplayName } from "../../hooks/profile/useDisplayName.hook";
 import { useBackendWork } from "./backendWork.hook";
 import { HomeOverviewRail } from "./homeOverviewRail.component";
-import { hueForName, PROJECT_STACKS } from "./projectStyle.helper";
+import { hueForName, stackLabel } from "./projectStyle.helper";
 import "./styles/home.style.css";
 
 const QUICK_START_PROMPTS: { label: string; description: string; icon: Icon; hue: Hue; prompt: string }[] = [
@@ -39,55 +40,47 @@ function greetingForHour(hour: number) {
 export function HomeScreen() {
   const openProject = useAppStore((s) => s.openProject);
   const setCreateProjectOpen = useAppStore((s) => s.setCreateProjectOpen);
-  const runSampleTask = useAppStore((s) => s.runSampleTask);
   const goToScreen = useAppStore((s) => s.goToScreen);
   const setDraft = useAppStore((s) => s.setDraft);
   const openBackendTask = useAppStore((s) => s.openBackendTask);
-  const tasks = useAppStore((s) => s.tasks);
-  const agentEvents = useAppStore((s) => s.agentEvents);
-  const approvals = useAppStore((s) => s.approvals);
   const project = useAppStore((s) => s.project);
   const preferredModel = useAppStore((s) => s.preferredModel);
-  const { backendTasks, pendingApprovals: allBackendApprovals, isSampleData } = useBackendWork();
+  const showNotice = useAppStore((s) => s.showNotice);
+  const { projects } = useProjects();
+  const displayName = useDisplayName();
+  const { backendTasks, pendingApprovals: allBackendApprovals } = useBackendWork();
   const decidedApprovals = usePendingApprovalsStore((s) => s.decided);
   const backendPendingApprovals = allBackendApprovals.filter(
     (item) => !decidedApprovals[pendingApprovalKey(item.task.id, item.approval.id)],
   );
   const [taskText, setTaskText] = useState("");
   const greeting = greetingForHour(new Date().getHours());
-  const localPendingApprovals = approvals.filter((approval) => approval.status === "pending");
-  const runningCount = tasks.filter((task) => task.status === "running").length
-    + backendTasks.filter((task) => task.status === "running").length;
-  const completedCount = tasks.filter((task) => task.status === "completed").length
-    + backendTasks.filter((task) => isFinishedStatus(task.status)).length;
-  const pendingCount = localPendingApprovals.length + backendPendingApprovals.length;
+  const runningCount = backendTasks.filter((task) => task.status === "running").length;
+  const completedCount = backendTasks.filter((task) => isFinishedStatus(task.status)).length;
+  const pendingCount = backendPendingApprovals.length;
   const today = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
   const startTask = (prompt?: string) => {
     const trimmedPrompt = (prompt ?? taskText).trim();
+    const target = project ?? projects[0];
+    if (!target) { showNotice("Add a project first, then describe a task."); setCreateProjectOpen(true); return; }
     if (trimmedPrompt) setDraft(trimmedPrompt);
-    openProject(project ?? PROJECTS[0]);
-    runSampleTask();
+    openProject(target);
   };
 
   const recentActivity = useMemo(() => {
-    const items: ActivityItem[] = [];
-    [...agentEvents].reverse().slice(0, 3).forEach((event) => items.push({
-      id: event.id, icon: event.state === "done" ? CheckCircle : event.state === "active" ? SpinnerGap : Clock,
-      hue: event.state === "done" ? "green" : event.state === "active" ? "blue" : "gray",
-      title: event.label, subtitle: event.detail ?? "Current task", when: event.state === "active" ? "now" : "just now",
-      open: () => goToScreen("workspace"),
-    }));
-    [...backendTasks].sort((a, b) => b.updated_at.localeCompare(a.updated_at)).slice(0, 6 - items.length).forEach((task) => {
-      const [StatusIcon, verb] = BACKEND_STATUS_ACTIVITY[task.status] ?? [Clock, task.status];
-      items.push({
-        id: task.id, icon: StatusIcon, hue: hueForStatus(task.status), title: task.prompt,
-        subtitle: `${verb} · ${task.project || "No project"}`, when: formatShortTimeAgo(task.updated_at),
-        open: () => openBackendTask(task.id),
+    return [...backendTasks]
+      .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
+      .slice(0, 6)
+      .map<ActivityItem>((task) => {
+        const [StatusIcon, verb] = BACKEND_STATUS_ACTIVITY[task.status] ?? [Clock, task.status];
+        return {
+          id: task.id, icon: StatusIcon, hue: hueForStatus(task.status), title: task.prompt,
+          subtitle: `${verb} · ${task.project || "No project"}`, when: formatShortTimeAgo(task.updated_at),
+          open: () => openBackendTask(task.id),
+        };
       });
-    });
-    return items;
-  }, [agentEvents, backendTasks, goToScreen, openBackendTask]);
+  }, [backendTasks, openBackendTask]);
 
   return (
     <div className="page pg-home">
@@ -96,7 +89,7 @@ export function HomeScreen() {
           <div className="pg-hello anim-in">
             <OwlMark size={40} />
             <p className="eyebrow">{today}</p>
-            <h1>{greeting}, Oluwayemi.<br /><span>What are we building?</span></h1>
+            <h1>{greeting}{displayName ? `, ${displayName}` : ""}.<br /><span>What are we building?</span></h1>
             <p>Describe a task. OWL reads the project, shows a plan, and waits for your approval before changing anything.</p>
           </div>
 
@@ -110,12 +103,12 @@ export function HomeScreen() {
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); startTask(); } }}
             />
             <div className="pg-composer-foot">
-              <button className="pg-chip" onClick={() => goToScreen("projects")} title="Change project"><FolderSimple size={14} /><b>Project</b> {project?.name ?? "ZudoMart"}</button>
+              <button className="pg-chip" onClick={() => goToScreen("projects")} title="Change project"><FolderSimple size={14} /><b>Project</b> {project?.name ?? projects[0]?.name ?? "None"}</button>
               <button className="pg-chip" onClick={() => goToScreen("settings")} title="Change model"><Cpu size={14} /><b>Model</b> {preferredModel === "auto" ? "Auto" : preferredModel}</button>
               <span className="pg-chip hide-m"><ShieldWarning size={14} /><b>Approval</b> Every edit</span>
               <span className="grow" />
-              <span className="pg-composer-hint hide-m"><kbd>Enter</kbd> to run · <kbd>Shift</kbd><kbd>Enter</kbd> new line</span>
-              <button className="btn btn-primary pg-send" onClick={() => startTask()} aria-label="Run task"><ArrowUp size={16} weight="bold" /></button>
+              <span className="pg-composer-hint hide-m"><kbd>Enter</kbd> to open · <kbd>Shift</kbd><kbd>Enter</kbd> new line</span>
+              <button className="btn btn-primary pg-send" onClick={() => startTask()} aria-label="Start task"><ArrowUp size={16} weight="bold" /></button>
             </div>
           </div>
 
@@ -133,7 +126,6 @@ export function HomeScreen() {
             Recent activity<span className="grow" />
             <button className="btn btn-ghost btn-sm" onClick={() => goToScreen("tasks")}>All tasks <ArrowRight size={13} /></button>
           </div>
-          {isSampleData && <p className="pg-note"><span className="demo-dot" /> Sample activity · the OWL service is offline</p>}
           {recentActivity.length > 0 ? (
             <ol className="pg-feed">
               {recentActivity.map((activity) => (
@@ -147,32 +139,38 @@ export function HomeScreen() {
               ))}
             </ol>
           ) : (
-            <EmptyState icon={Clock} title="Nothing has happened yet" body="Run a task and every read, edit, and command shows up here." />
+            <EmptyState icon={Clock} title="Nothing has happened yet" body="Open a project and describe a task; every read, edit, and command shows up here." />
           )}
 
           <div className="pg-label">
             Your projects<span className="grow" />
-            <button className="btn btn-ghost btn-sm" onClick={() => setCreateProjectOpen(true)}><Plus size={13} weight="bold" /> New</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setCreateProjectOpen(true)}><Plus size={13} weight="bold" /> Add</button>
             <button className="btn btn-ghost btn-sm" onClick={() => goToScreen("projects")}>All projects <ArrowRight size={13} /></button>
           </div>
-          <div className="pg-projrow">
-            {PROJECTS.map((sampleProject) => {
-              const stack = PROJECT_STACKS[sampleProject.name];
-              const hue = hueForName(sampleProject.name);
-              return (
-                <button key={sampleProject.name} className="pg-projmini" onClick={() => openProject(sampleProject)}>
-                  <span className="cov" style={{ background: `var(--${hue}-bg)`, color: `var(--${hue})` }} />
-                  <Tile icon={FolderOpen} hue={hue} />
-                  <b>{sampleProject.name}</b>
-                  <span className="meta">{stack && <Tag hue={stack.hue}>{stack.label}</Tag>}<span>{sampleProject.opened}</span></span>
-                </button>
-              );
-            })}
-          </div>
+          {projects.length > 0 ? (
+            <div className="pg-projrow">
+              {projects.slice(0, 4).map((item) => {
+                const label = stackLabel(item);
+                const hue = hueForName(item.name);
+                return (
+                  <button key={item.id} className="pg-projmini" onClick={() => openProject(item)}>
+                    <span className="cov" style={{ background: `var(--${hue}-bg)`, color: `var(--${hue})` }} />
+                    <Tile icon={FolderOpen} hue={hue} />
+                    <b>{item.name}</b>
+                    <span className="meta">{label && <Tag hue={hue}>{label}</Tag>}<span>{item.last_opened_at ? formatShortTimeAgo(item.last_opened_at) : "new"}</span></span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <EmptyState icon={FolderOpen} hue="blue" title="No projects yet" body="Point OWL at a folder on this computer to get started. It only reads and writes inside the folders you choose.">
+              <button className="btn btn-primary" onClick={() => setCreateProjectOpen(true)}><Plus size={14} weight="bold" /> Open your first project</button>
+            </EmptyState>
+          )}
         </div>
 
         <HomeOverviewRail
-          localPendingApprovals={localPendingApprovals}
+          backendTasks={backendTasks}
           backendPendingApprovals={backendPendingApprovals}
           pendingCount={pendingCount}
           runningCount={runningCount}

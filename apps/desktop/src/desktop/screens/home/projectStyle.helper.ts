@@ -1,4 +1,5 @@
 import type { Hue } from "../../../shared/components/tag.component";
+import type { Project } from "../../services/agentApi.types";
 
 const PROJECT_HUES: Hue[] = ["blue", "purple", "green", "orange", "pink", "yellow", "brown", "red"];
 
@@ -8,9 +9,9 @@ export function hueForName(name: string): Hue {
   return PROJECT_HUES[hash % PROJECT_HUES.length];
 }
 
-export const PROJECT_STACKS: Record<string, { label: string; hue: Hue }> = {
-  ZudoMart: { label: "Go", hue: "blue" },
-  ProofLens: { label: "TypeScript", hue: "purple" },
-  Scriptune: { label: "React", hue: "green" },
-  "Owl Agent": { label: "Python + React", hue: "yellow" },
-};
+export function stackLabel(project: Project): string {
+  const languages = project.stack?.languages ?? [];
+  const frameworks = project.stack?.frameworks ?? [];
+  const parts = [...frameworks.slice(0, 1), ...languages.slice(0, frameworks.length ? 0 : 2)];
+  return parts.join(" · ");
+}
