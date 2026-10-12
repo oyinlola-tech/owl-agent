@@ -3,7 +3,12 @@ import {
 } from "@phosphor-icons/react";
 import { HeroDemo } from "./heroDemo.section";
 import { SiteLink } from "../../components/siteLink.component";
-import { OpenAppLink, WebsiteDownloadLink } from "../../components/openApp.component";
+import { OpenAppLink } from "../../components/openApp.component";
+import { isWebsiteOnlyBuild } from "../../../shared/platform/runtimeMode.helper";
+import { useDetectedPlatform } from "../../pages/download/release/releaseDownload.hook";
+import { DetectedDownloadButton, IntelMacLink } from "../../pages/download/links/downloadButton.component";
+import { terminalInstallCommandFor } from "../../pages/download/links/stableDownloadLink.helper";
+import { CodeBlock } from "../../components/codeBlock.component";
 import "./hero.style.css";
 
 const SUPPORTED_STACK = [
@@ -14,6 +19,39 @@ const SUPPORTED_STACK = [
   { icon: Cube, name: "Docker" },
   { icon: Database, name: "Postgres" },
 ];
+
+function HeroTerminalInstall({ command }: { command: { label: string; code: string } }) {
+  return (
+    <div className="hero-terminal" role="group" aria-label="Or install from the terminal">
+      <p>Or install from the terminal <SiteLink to="/download#terminal">More install options</SiteLink></p>
+      <CodeBlock label={command.label} code={command.code} />
+    </div>
+  );
+}
+
+function WebsiteHeroActions() {
+  const platform = useDetectedPlatform();
+  return (
+    <>
+      <div className="hero-cta">
+        <DetectedDownloadButton className="btn btn-dark btn-lg" platform={platform} />
+        <SiteLink className="btn btn-secondary btn-lg" to="/download">Other platforms</SiteLink>
+        <OpenAppLink className="btn btn-secondary btn-lg" label="Open the app" arrowSize={16} />
+      </div>
+      <IntelMacLink className="hero-alt" platform={platform} />
+      <HeroTerminalInstall command={terminalInstallCommandFor(platform)} />
+    </>
+  );
+}
+
+function DesktopHeroActions() {
+  return (
+    <div className="hero-cta">
+      <OpenAppLink className="btn btn-dark btn-lg" label="Open the app" arrowSize={16} />
+      <a className="btn btn-secondary btn-lg" href="#demo"><PlayCircle size={17} weight="duotone" /> Try a run</a>
+    </div>
+  );
+}
 
 export function HeroSection() {
   return (
@@ -31,11 +69,7 @@ export function HeroSection() {
             OWL reads your repo, writes a plan, and proposes every edit as a diff you can read.
             Nothing is written, run, or pushed until you approve it.
           </p>
-          <div className="hero-cta">
-            <OpenAppLink className="btn btn-dark btn-lg" label="Open the app" arrowSize={16} />
-            <WebsiteDownloadLink className="btn btn-secondary btn-lg" />
-            <a className="btn btn-secondary btn-lg" href="#demo"><PlayCircle size={17} weight="duotone" /> Try a run</a>
-          </div>
+          {isWebsiteOnlyBuild() ? <WebsiteHeroActions /> : <DesktopHeroActions />}
           <ul className="hero-trust">
             <li><HardDrives size={15} weight="duotone" />Runs on your machine</li>
             <li><ShieldCheck size={15} weight="duotone" />Approvals bound to the exact action</li>
