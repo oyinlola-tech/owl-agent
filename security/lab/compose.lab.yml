@@ -1,0 +1,73 @@
+name: owl-lab
+
+services:
+  owl-service:
+    build:
+      context: ../../services/agent
+      dockerfile: ../../security/lab/serviceImage.lab.Dockerfile
+    image: owl-lab/service:local
+    hostname: owl-service
+    user: "10001:10001"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /data:size=64m,uid=10001,gid=10001,mode=0700
+      - /home/owl:size=16m,uid=10001,gid=10001,mode=0700
+    volumes:
+      - workspace:/workspace
+    environment:
+      HOME: /home/owl
+      OWL_DB_PATH: /data/owl.db
+      OWL_WORKSPACES: /workspace/sample
+      OWL_SERVICE_TOKEN: ${OWL_LAB_TOKEN:?run security/lab/startLab.lab.sh instead of compose directly}
+      OWL_REQUIRE_TOKEN: "true"
+      OWL_ALLOWED_HOSTS: owl-service
+      OWL_STEP_DELAY: "0.2"
+      OWL_SANDBOX: preferred
+      NVIDIA_API_KEY: ""
+      OWL_NVIDIA_API_KEY: ""
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 1.0
+    pids_limit: 128
+    ulimits:
+      nofile:
+        soft: 1024
+        hard: 1024
+    networks:
+      - lab
+
+  attacker:
+    build:
+      context: .
+      dockerfile: attackerImage.lab.Dockerfile
+    image: owl-lab/attacker:local
+    hostname: attacker
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /home/attacker:size=64m,uid=10002,gid=10002,mode=0700
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 256m
+    memswap_limit: 256m
+    cpus: 0.5
+    pids_limit: 64
+    depends_on:
+      owl-service:
+        condition: service_healthy
+    networks:
+      - lab
+
+networks:
+  lab:
+    internal: true
+
+volumes:
+  workspace:
