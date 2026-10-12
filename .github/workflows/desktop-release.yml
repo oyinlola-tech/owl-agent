@@ -115,39 +115,64 @@ jobs:
           releaseId: ${{ needs.create-release.outputs.release_id }}
 
   checksums:
-    name: Publish SHA256SUMS.txt
+    name: Publish stable-name copies and SHA256SUMS.txt
     needs: [create-release, build]
     runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_ID: ${{ needs.create-release.outputs.release_id }}
     steps:
-      - name: Download every release asset and hash it
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_ID: ${{ needs.create-release.outputs.release_id }}
+      - name: Download every versioned release asset
         run: |
           set -euo pipefail
           test -n "$RELEASE_ID" || { echo "No release id"; exit 1; }
           mkdir assets
           gh api --paginate "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets" \
-            --jq '.[] | select(.name != "SHA256SUMS.txt") | [.id, .name] | @tsv' > asset-list.tsv
+            --jq '.[] | select(.name != "SHA256SUMS.txt") | select(.name | startswith("OWL-Agent-") | not) | [.id, .name] | @tsv' \
+            > asset-list.tsv
           while IFS=$'\t' read -r asset_id asset_name; do
             gh api -H "Accept: application/octet-stream" \
               "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" > "assets/${asset_name}"
           done < asset-list.tsv
-          (cd assets && sha256sum -- * > ../SHA256SUMS.txt)
-          cat SHA256SUMS.txt
-      - name: Upload SHA256SUMS.txt to the same release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_ID: ${{ needs.create-release.outputs.release_id }}
+          ls -l assets
+
+      - name: Copy each installer to its stable file name
         run: |
           set -euo pipefail
-          old_id=$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets" --paginate \
-            --jq '.[] | select(.name == "SHA256SUMS.txt") | .id')
-          if [ -n "$old_id" ]; then
-            gh api -X DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${old_id}"
-          fi
-          curl -fsSL -X POST \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H "Content-Type: text/plain" \
-            --data-binary @SHA256SUMS.txt \
-            "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=SHA256SUMS.txt"
+          mkdir stable
+          missing=0
+          while read -r versioned_suffix stable_name; do
+            matches=()
+            for candidate in assets/*"${versioned_suffix}"; do
+              [ -f "$candidate" ] && matches+=("$candidate")
+            done
+            if [ "${#matches[@]}" -ne 1 ]; then
+              echo "::error::Expected exactly one asset ending in '${versioned_suffix}' for ${stable_name}, found ${#matches[@]}"
+              missing=1
+              continue
+            fi
+            cp -- "${matches[0]}" "stable/${stable_name}"
+            echo "${matches[0]#assets/} -> ${stable_name}"
+          done <<'STABLE_NAMES'
+          _x64-setup.exe OWL-Agent-Setup-x64.exe
+          _x64_en-US.msi OWL-Agent-x64.msi
+          _aarch64.dmg OWL-Agent-macOS-AppleSilicon.dmg
+          _x64.dmg OWL-Agent-macOS-Intel.dmg
+          _amd64.AppImage OWL-Agent-Linux-x64.AppImage
+          _amd64.deb OWL-Agent-Linux-x64.deb
+          .x86_64.rpm OWL-Agent-Linux-x64.rpm
+          STABLE_NAMES
+          test "$missing" -eq 0 || { echo "Some installers are missing; not publishing stable names."; exit 1; }
+
+      - name: Hash versioned and stable files
+        run: |
+          set -euo pipefail
+          cp -- stable/* assets/
+          (cd assets && sha256sum -- * > ../SHA256SUMS.txt)
+          cat SHA256SUMS.txt
+
+      - name: Upload stable copies and SHA256SUMS.txt to the same release
+        run: |
+          set -euo pipefail
+          release_tag=$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" --jq .tag_name)
+          gh release upload "$release_tag" stable/* SHA256SUMS.txt --clobber --repo "$GITHUB_REPOSITORY"
