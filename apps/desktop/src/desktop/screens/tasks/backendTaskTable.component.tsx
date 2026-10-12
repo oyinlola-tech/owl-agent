@@ -1,27 +1,31 @@
 import { useEffect, useState } from "react";
-import { ArrowClockwise, ArrowRight, ClockCounterClockwise, FolderSimple, GitBranch, Info, Pause, Play, Rows, Sparkle, SpinnerGap, Terminal, TextAa, X } from "@phosphor-icons/react";
+import { ArrowClockwise, ArrowRight, ClockCounterClockwise, FolderSimple, GitBranch, Info, Pause, Play, Rows, Sparkle, SpinnerGap, Terminal, TextAa, WarningCircle, X } from "@phosphor-icons/react";
 import { useAppStore } from "../../state/app.store";
 import { agentApi } from "../../services/agentApi.service";
+import { isServiceAuthError } from "../../services/connection/serviceRequest.service";
 import type { BackendTask } from "../../services/agentApi.types";
-import { SAMPLE_BACKEND_TASKS } from "../../services/samples/sampleTasks.data";
-import { loadWithSampleFallback, SAMPLE_SAVE_NOTICE } from "../../services/samples/sampleMode.helper";
 import { isFinishedStatus, StatusTag } from "../../../shared/components/statusTag.component";
-import { EmptyState, SampleDataBanner, SectionTitle } from "../../../shared/components/pageLayout.component";
+import { EmptyState, SectionTitle } from "../../../shared/components/pageLayout.component";
 import { Tag } from "../../../shared/components/tag.component";
 import { formatShortTimeAgo } from "../../../shared/helpers/time.helper";
 
 export function useBackendTasks() {
   const [rows, setRows] = useState<BackendTask[]>([]);
-  const [demo, setDemo] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [failure, setFailure] = useState<"none" | "offline" | "unauthorized">("none");
   const load = async () => {
-    const result = await loadWithSampleFallback(agentApi.backendTasks(), SAMPLE_BACKEND_TASKS);
-    setRows([...result.data].sort((a, b) => b.updated_at.localeCompare(a.updated_at)));
-    setDemo(result.demo);
-    setLoaded(true);
+    try {
+      const data = await agentApi.backendTasks();
+      setRows([...data].sort((a, b) => b.updated_at.localeCompare(a.updated_at)));
+      setFailure("none");
+    } catch (error) {
+      setFailure(isServiceAuthError(error) ? "unauthorized" : "offline");
+    } finally {
+      setLoaded(true);
+    }
   };
   useEffect(() => { void load(); }, []);
-  return { rows, setRows, demo, loaded, load };
+  return { rows, setRows, loaded, failure, load };
 }
 
 type BackendTaskList = ReturnType<typeof useBackendTasks>;
@@ -30,7 +34,7 @@ export function BackendTaskTable({ backend, query }: { backend: BackendTaskList;
   const notify = useAppStore((s) => s.showNotice);
   const openBackendTask = useAppStore((s) => s.openBackendTask);
   const askForConfirmation = useAppStore((s) => s.askForConfirmation);
-  const { rows, setRows, demo, loaded, load } = backend;
+  const { rows, loaded, failure, load } = backend;
   const [checkpointsByTask, setCheckpointsByTask] = useState<Record<string, { id: string; label: string }[]>>({});
   const [prompt, setPrompt] = useState("");
   const [workspace, setWorkspace] = useState("");
@@ -39,14 +43,9 @@ export function BackendTaskTable({ backend, query }: { backend: BackendTaskList;
     agentApi.workspaces().then((workspaces) => {
       setAuthorizedRoots(workspaces.roots);
       if (workspaces.roots.length > 0) setWorkspace((current) => current || workspaces.roots[0]);
-    }).catch(() => setWorkspace((current) => current || "~/Projects/zudomart"));
+    }).catch(() => {});
   }, []);
-  const updateSampleTaskStatus = (id: string, status: string, message: string) => {
-    setRows((list) => list.map((task) => (task.id === id ? { ...task, status, updated_at: new Date().toISOString() } : task)));
-    notify(`${message}. ${SAMPLE_SAVE_NOTICE}`);
-  };
-  const runTaskAction = async (id: string, request: () => Promise<unknown>, message: string, sampleStatus: string) => {
-    if (demo) { updateSampleTaskStatus(id, sampleStatus, message); return; }
+  const runTaskAction = async (request: () => Promise<unknown>, message: string) => {
     try {
       await request();
       notify(message);
@@ -56,7 +55,6 @@ export function BackendTaskTable({ backend, query }: { backend: BackendTaskList;
     }
   };
   const showCheckpoints = async (id: string) => {
-    if (demo) { setCheckpointsByTask((current) => ({ ...current, [id]: [{ id: `ck_${id}`, label: "Before changes" }] })); return; }
     try {
       const checkpoints = await agentApi.checkpoints(id);
       setCheckpointsByTask((current) => ({ ...current, [id]: checkpoints }));
@@ -65,7 +63,6 @@ export function BackendTaskTable({ backend, query }: { backend: BackendTaskList;
     }
   };
   const startTask = async () => {
-    if (demo) { notify(`Can't start a saved task while the service is offline. ${SAMPLE_SAVE_NOTICE}`); return; }
     try {
       const task = await agentApi.createBackendTask(prompt.trim(), "", workspace.trim());
       setPrompt("");
@@ -82,7 +79,6 @@ export function BackendTaskTable({ backend, query }: { backend: BackendTaskList;
         Saved tasks
       </SectionTitle>
       <p className="pg-note"><Info size={14} /> Stored by the OWL service with checkpoints. Resume continues from the last verified state.</p>
-      {demo && <SampleDataBanner onRetry={() => void load()} what="this list" />}
       <div className="pg-newtask">
         <div className="input-wrap">
           <Sparkle size={15} />
@@ -94,7 +90,7 @@ export function BackendTaskTable({ backend, query }: { backend: BackendTaskList;
           <FolderSimple size={15} />
           <input className="input pg-mono" value={workspace} onChange={(e) => setWorkspace(e.target.value)}
             placeholder="Workspace path" aria-label="Workspace path"
-            title={authorizedRoots.length ? `Authorized: ${authorizedRoots.join(", ")}` : "Authorized folders come from OWL_WORKSPACES on the service"} />
+            title={authorizedRoots.length ? `Authorized: ${authorizedRoots.join(", ")}` : "Authorized folders come from your projects and OWL_WORKSPACES"} />
         </div>
         <button className="btn btn-primary" disabled={!prompt.trim()} onClick={() => void startTask()}>
           <Play size={14} weight="fill" /> Start task
@@ -102,6 +98,12 @@ export function BackendTaskTable({ backend, query }: { backend: BackendTaskList;
       </div>
       {!loaded ? (
         <div className="pg-skel">{[80, 64, 72].map((width, index) => <span key={index} className="skel-line" style={{ width: `${width}%`, height: 16 }} />)}</div>
+      ) : failure !== "none" ? (
+        <EmptyState icon={WarningCircle} hue={failure === "unauthorized" ? "orange" : "red"}
+          title={failure === "unauthorized" ? "Sign in to the local service" : "OWL's local service isn't running"}
+          body={failure === "unauthorized" ? "The desktop app couldn't authenticate with the local service." : "Start the OWL service to see your saved tasks."}>
+          <button className="btn btn-secondary" onClick={() => void load()}><ArrowClockwise size={14} /> Retry</button>
+        </EmptyState>
       ) : shownTasks.length > 0 ? (
         <div className="pg-table-wrap">
           <table className="pg-table cards">
@@ -144,17 +146,17 @@ export function BackendTaskTable({ backend, query }: { backend: BackendTaskList;
                   <td onClick={(e) => e.stopPropagation()}>
                     <div className="acts">
                       {task.status === "running" && (
-                        <button className="btn btn-ghost btn-sm" onClick={() => void runTaskAction(task.id, () => agentApi.pauseBackendTask(task.id), "Task paused", "paused")}><Pause size={13} /> Pause</button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => void runTaskAction(() => agentApi.pauseBackendTask(task.id), "Task paused")}><Pause size={13} /> Pause</button>
                       )}
                       {(task.status === "paused" || task.status === "failed") && (
-                        <button className="btn btn-secondary btn-sm" onClick={() => void runTaskAction(task.id, () => agentApi.resumeBackendTask(task.id), "Task resumed", "running")}><Play size={13} /> Resume</button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => void runTaskAction(() => agentApi.resumeBackendTask(task.id), "Task resumed")}><Play size={13} /> Resume</button>
                       )}
                       {(task.status === "running" || task.status === "awaiting_approval" || task.status === "paused") && (
                         <button className="btn btn-ghost btn-sm" onClick={() => askForConfirmation({
                           title: "Cancel this task?",
                           body: "The agent stops at its next step. Changes already approved stay, and checkpoints are kept.",
                           confirmLabel: "Cancel task",
-                          run: () => void runTaskAction(task.id, () => agentApi.cancelBackendTask(task.id), "Task cancelled", "cancelled"),
+                          run: () => void runTaskAction(() => agentApi.cancelBackendTask(task.id), "Task cancelled"),
                         })}><X size={13} /> Cancel</button>
                       )}
                       <button className="btn btn-ghost btn-sm btn-icon" title="Show checkpoints" aria-label="Show checkpoints" onClick={() => void showCheckpoints(task.id)}>

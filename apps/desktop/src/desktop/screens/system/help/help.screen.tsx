@@ -55,7 +55,6 @@ export function HelpScreen() {
   const project = useAppStore((s) => s.project);
   const agentEvents = useAppStore((s) => s.agentEvents);
   const changes = useAppStore((s) => s.changes);
-  const fileChangeDecisions = useAppStore((s) => s.fileChangeDecisions);
   const approvals = useAppStore((s) => s.approvals);
   const [health, setHealth] = useState<HealthRead | null>(null);
   const [offline, setOffline] = useState(false);
@@ -78,7 +77,7 @@ export function HelpScreen() {
   const gettingStartedSteps: { done: boolean; title: string; body: string; icon: Icon; to: AppScreen; cta: string }[] = [
     { done: Boolean(project), title: "Open a project", body: "Pick the folder OWL may work in.", icon: FolderOpen, to: "projects", cta: "Projects" },
     { done: agentEvents.length > 0, title: "Run a task", body: "Describe the job; OWL reads first and shows a plan.", icon: Play, to: "workspace", cta: "Workspace" },
-    { done: Object.keys(fileChangeDecisions).length > 0 || changes.length > 0, title: "Review a diff", body: "Every edit arrives as a diff you can read line by line.", icon: GitDiff, to: "workspace", cta: "Changes" },
+    { done: changes.length > 0, title: "Review a diff", body: "Every edit arrives as a diff you can read line by line.", icon: GitDiff, to: "workspace", cta: "Changes" },
     { done: approvals.some((approval) => approval.status !== "pending"), title: "Approve or reject", body: "Nothing is written until you say so.", icon: Tray, to: "inbox", cta: "Inbox" },
     { done: false, title: "Check the history", body: "See what changed and revert any single edit.", icon: ClockCounterClockwise, to: "history", cta: "History" },
   ];

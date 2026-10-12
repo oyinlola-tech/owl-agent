@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { cleanup, render, screen } from "@testing-library/react";
 import { agentApi } from "../agentApi.service";
-import { loadWithSampleFallback } from "../samples/sampleMode.helper";
 import { forgetServiceToken } from "./serviceToken.service";
 import { markServiceAuthWorking, useServiceConnectionStore } from "./serviceConnection.store";
 import { ServiceAuthErrorPanel } from "../../layout/serviceAuthError.layout";
@@ -79,21 +78,18 @@ describe("service requests carry the service token", () => {
 });
 
 describe("authentication failures", () => {
-  it("turns a 401 into the auth-error state instead of sample data", async () => {
+  it("turns a 401 into the auth-error state", async () => {
     mockServiceResponses(401, { detail: "missing or invalid service token", code: "unauthorized" });
-    const sample = [{ id: "sample-task" }];
-    await expect(loadWithSampleFallback(agentApi.backendTasks() as Promise<unknown>, sample)).rejects.toMatchObject({ status: 401 });
+    await expect(agentApi.backendTasks()).rejects.toMatchObject({ status: 401 });
     expect(useServiceConnectionStore.getState().authFailed).toBe(true);
     render(createElement(ServiceAuthErrorPanel));
     expect(screen.getByText("Can't authenticate with the local OWL service")).toBeTruthy();
     expect(screen.getAllByText(/VITE_OWL_DEV_TOKEN/).length).toBeGreaterThan(0);
   });
 
-  it("keeps sample data when the service is offline", async () => {
+  it("surfaces a network failure as a thrown error, not sample data", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("Failed to fetch"); }));
-    const sample = [{ id: "sample-task" }];
-    const result = await loadWithSampleFallback(agentApi.backendTasks() as Promise<unknown>, sample);
-    expect(result).toEqual({ data: sample, demo: true });
+    await expect(agentApi.backendTasks()).rejects.toBeInstanceOf(TypeError);
     expect(useServiceConnectionStore.getState().authFailed).toBe(false);
   });
 });

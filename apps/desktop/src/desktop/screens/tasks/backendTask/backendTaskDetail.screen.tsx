@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft, ArrowSquareOut, Check, Copy, Cpu, Gauge, GitBranch, Hash, Info, ListChecks, Path, Pause, Play, Pulse,
   SealCheck, ShieldWarning, SpinnerGap, Terminal, Timer, Wrench, X, CalendarBlank, type Icon,
 } from "@phosphor-icons/react";
 import { useAppStore } from "../../../state/app.store";
-import { pendingApprovalKey, usePendingApprovalsStore } from "../../../state/pendingApprovals.store";
+import { usePendingApprovalsStore } from "../../../state/pendingApprovals.store";
 import { agentApi, ApiError } from "../../../services/agentApi.service";
 import { type ApprovalRead, type JournalRow, type TaskDetail } from "../../../services/agentApi.types";
 import { isServiceAuthError } from "../../../services/connection/serviceRequest.service";
@@ -103,6 +103,19 @@ export function BackendTaskDetailScreen() {
       </div>
     );
   }
+  if (!detail && failure !== "none") {
+    return (
+      <div className="page pg-detail">
+        {backButton}
+        <EmptyState icon={ListChecks} hue={failure === "unauthorized" ? "orange" : "red"}
+          title={failure === "unauthorized" ? "Sign in to the local service" : "OWL's local service isn't running"}
+          body={failure === "unauthorized" ? "The desktop app couldn't authenticate with the local service." : "Start the OWL service to open this task."}>
+          <button className="btn btn-secondary" onClick={() => void loadTaskDetail(taskId)}>Retry</button>
+          <button className="btn btn-primary" onClick={() => goToScreen("tasks")}>All tasks</button>
+        </EmptyState>
+      </div>
+    );
+  }
   if (!detail) {
     return (
       <div className="page pg-detail">
@@ -119,13 +132,7 @@ export function BackendTaskDetailScreen() {
   const task = detail.task;
   const pendingApprovals = approvals.filter((approval) => approval.status === "pending");
   const decidedApprovals = approvals.filter((approval) => approval.status !== "pending");
-  const setSampleStatus = (status: string) => setDetail((current) => (current ? { ...current, task: { ...current.task, status, updated_at: new Date().toISOString() } } : current));
-  const runTaskAction = async (request: () => Promise<unknown>, message: string, sampleStatus?: string) => {
-    if (demo) {
-      if (sampleStatus) setSampleStatus(sampleStatus);
-      notify(`${message}. ${SAMPLE_SAVE_NOTICE}`);
-      return;
-    }
+  const runTaskAction = async (request: () => Promise<unknown>, message: string) => {
     try {
       await request();
       notify(message);
@@ -135,12 +142,6 @@ export function BackendTaskDetailScreen() {
     }
   };
   const decideApproval = (approval: ApprovalRead, approved: boolean) => {
-    if (demo) {
-      setApprovals((list) => list.map((item) => (item.id === approval.id ? { ...item, status: approved ? "approved" : "rejected", decided_by: "you", decided_at: new Date().toISOString() } : item)));
-      usePendingApprovalsStore.getState().markDecided(pendingApprovalKey(task.id, approval.id), { status: approved ? "approved" : "rejected", at: new Date().toISOString() });
-      notify(`${approved ? "Approved" : "Rejected"}. ${SAMPLE_SAVE_NOTICE}`);
-      return;
-    }
     void runTaskAction(() => agentApi.decide(task.id, approval.id, approved), approved ? "Approved" : "Rejected")
       .then(() => usePendingApprovalsStore.getState().refresh());
   };
@@ -149,11 +150,6 @@ export function BackendTaskDetailScreen() {
     body: "Restores the file to how it was before this change. If the file changed since, the revert stops and nothing is overwritten.",
     confirmLabel: "Revert change",
     run: () => {
-      if (demo) {
-        setJournal((list) => list.map((item) => (item.id === row.id ? { ...item, reverted_at: new Date().toISOString() } : item)));
-        notify(`Reverted. ${SAMPLE_SAVE_NOTICE}`);
-        return;
-      }
       agentApi.revertJournal(task.id, row.id)
         .then(() => { notify(`Reverted ${row.path}`); void loadTaskDetail(taskId); })
         .catch((e) => notify(e instanceof ApiError && e.status === 409
@@ -177,7 +173,6 @@ export function BackendTaskDetailScreen() {
   return (
     <div className="page pg-detail">
       {backButton}
-      {demo && <SampleDataBanner onRetry={() => { demoRef.current = false; void loadTaskDetail(taskId); }} what="this task" />}
       <PageHeader icon={Terminal} hue={hueForStatus(task.status)} title={task.prompt.slice(0, 140) || "Untitled task"}
         eyebrow={<><Hash size={13} /> {task.id}{task.project && <> · {task.project}</>}</>} />
       <PropertyList rows={[
@@ -207,8 +202,8 @@ export function BackendTaskDetailScreen() {
         )}
         <button className="btn btn-secondary" onClick={() => copyTextAndNotify(task.id, notify, "Task ID copied")}><Copy size={14} /> Copy ID</button>
         <span className="grow" />
-        <button className="btn btn-secondary" onClick={() => { openProject({ name: task.project || "ZudoMart", path: `~/Projects/${(task.project || "zudomart").toLowerCase()}`, opened: "now" }); }}>
-          <ArrowSquareOut size={14} /> Open in workspace
+        <button className="btn btn-secondary" onClick={() => goToScreen("workspace")}>
+          <ArrowSquareOut size={14} /> Open workspace
         </button>
       </div>
 
@@ -236,7 +231,7 @@ export function BackendTaskDetailScreen() {
       {tab === "verification" && (
         <VerificationPanel taskStatus={task.status} summary={detail.verification} runs={verificationRuns} onResume={resumeTask} />
       )}
-      {tab === "activity" && <BackendTaskActivityPanel toolCalls={detail.tool_calls} events={events} live={live} demo={demo} />}
+      {tab === "activity" && <BackendTaskActivityPanel toolCalls={detail.tool_calls} events={events} live={live} demo={false} />}
       {tab === "changes" && <BackendTaskChangesPanel journal={journal} onRevert={revertJournalRow} />}
       {tab === "usage" && (
         <BackendTaskUsagePanel usage={detail.usage} totalInputTokens={totalInputTokens} totalOutputTokens={totalOutputTokens} />

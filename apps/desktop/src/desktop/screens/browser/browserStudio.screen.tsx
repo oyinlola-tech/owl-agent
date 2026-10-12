@@ -33,7 +33,6 @@ export function BrowserStudioScreen() {
   const notify = useAppStore((s) => s.showNotice);
   const setDraft = useAppStore((s) => s.setDraft);
   const goToScreen = useAppStore((s) => s.goToScreen);
-  const openProject = useAppStore((s) => s.openProject);
   const project = useAppStore((s) => s.project);
   const [capture, setCapture] = useState<{ title: string; text: string; screenshot?: string; screenshotUrl?: string } | null>(null);
   const [capturing, setCapturing] = useState(false);
@@ -68,7 +67,7 @@ export function BrowserStudioScreen() {
   const goForward = () => { const next = forwardStack[0]; if (!next) return; setForwardStack((stack) => stack.slice(1)); setBackStack((stack) => [...stack, url]); setUrl(next); };
   const sendToAgent = () => {
     setDraft(`Recreate the layout of ${url} as fresh components in this project. Match the structure and responsive behaviour at ${width}px, ${width >= 1024 ? 768 : 1440}px and 390px. Don't copy assets or text.`);
-    if (!project) openProject({ name: "ZudoMart", path: "~/Projects/zudomart", opened: "now" });
+    if (!project) { notify("Open a project first, then send this prompt to the workspace."); goToScreen("projects"); return; }
     goToScreen("workspace");
     notify("Prompt added to the chat. Review it, then press Send.");
   };

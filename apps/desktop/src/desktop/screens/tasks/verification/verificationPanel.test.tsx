@@ -2,14 +2,41 @@ import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { VerificationPanel } from "./verificationPanel.component";
 import { verificationState } from "./verificationState.helper";
-import { SAMPLE_VERIFICATION } from "../../../services/samples/sampleVerification.data";
-import type { VerificationRun } from "../../../services/agentApi.types";
+import type { VerificationRequirement, VerificationRun, VerificationSummary } from "../../../services/agentApi.types";
 
 afterEach(cleanup);
 
-const verified = SAMPLE_VERIFICATION.tsk_1be4470a;
-const unverified = SAMPLE_VERIFICATION.tsk_9d33b2f8;
-const failing = SAMPLE_VERIFICATION.tsk_3e91a0b5;
+function requirement(id: string, kind: VerificationRequirement["kind"], argv: string[], required = true): VerificationRequirement {
+  return { id, kind, argv, cwd: ".", source: "project_manifest", detail: `${kind} check`, required, timeout: 600, safe: true, unsafe_reason: "" };
+}
+
+function run(req: VerificationRequirement, attempt: number, status: VerificationRun["status"], exitCode: number | null, stdout: string): VerificationRun {
+  return {
+    id: `${req.id}-${attempt}`, task_id: "t", requirement_id: req.id, kind: req.kind, command: req.argv,
+    working_directory: "/tmp/project", status, exit_code: exitCode, stdout, stderr: "", required: req.required,
+    source: req.source, source_detail: req.detail, attempt, started_at: "2026-01-01T00:00:00Z",
+    completed_at: status === "running" ? null : "2026-01-01T00:00:05Z", duration_ms: status === "running" ? null : 380, error: "", created_at: "2026-01-01T00:00:00Z",
+  };
+}
+
+const typecheck = requirement("req-typecheck", "typecheck", ["pnpm", "run", "typecheck"]);
+const tests = requirement("req-tests", "tests", ["pnpm", "run", "test"]);
+const lint = requirement("req-lint", "lint", ["pnpm", "run", "lint"], false);
+
+const verified: { verification: VerificationSummary; verifications: VerificationRun[] } = {
+  verification: { status: "verified_completed", verified: true, verified_at: "2026-01-01T00:00:05Z", note: "", attempts: 1, max_attempts: 3, requirements: [typecheck, tests, lint] },
+  verifications: [run(typecheck, 1, "passed", 0, "ok"), run(tests, 1, "passed", 0, "9 passed"), run(lint, 1, "passed", 0, "clean")],
+};
+const unverified: { verification: VerificationSummary; verifications: VerificationRun[] } = {
+  verification: { status: "completed_unverified", verified: false, verified_at: null, note: "No reliable project verification command was detected.", attempts: 0, max_attempts: 3, requirements: [] },
+  verifications: [],
+};
+const pytest = requirement("req-pytest", "tests", [".venv/bin/python", "-m", "pytest", "-q"]);
+const pyLint = requirement("req-pylint", "lint", [".venv/bin/python", "-m", "ruff", "check", "."], false);
+const failing: { verification: VerificationSummary; verifications: VerificationRun[] } = {
+  verification: { status: "running", verified: false, verified_at: null, note: "Required checks not passing: pytest", attempts: 2, max_attempts: 3, requirements: [pytest, pyLint] },
+  verifications: [run(pytest, 1, "failed", 1, "1 failed, 5 passed in 0.41s"), run(pytest, 2, "failed", 1, "1 failed, 5 passed in 0.38s")],
+};
 
 describe("VerificationPanel", () => {
   it("shows a verified task with every check passing", () => {
