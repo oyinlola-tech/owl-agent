@@ -17,7 +17,12 @@ DEV_TOKEN = "dev-token-for-qa-0123456789"
 
 
 def build_app(tmp_path, **overrides):
-    params = {"step_delay": 0.01, "db_path": str(tmp_path / "t.db"), "_env_file": None}
+    params = {
+        "step_delay": 0.01,
+        "db_path": str(tmp_path / "t.db"),
+        "_env_file": None,
+        "provider": "mock",
+    }
     params.update(overrides)
     return create_app(Settings(nvidia_api_key="", **params))
 

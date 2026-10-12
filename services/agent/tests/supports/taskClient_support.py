@@ -57,6 +57,7 @@ def make_test_client(tmp_path, provider=None, workspace=None, **overrides):
         "workspaces": ws,
         "_env_file": None,
         "nvidia_api_key": "",
+        "provider": "mock",
     }
     params.update(overrides)
     app = create_app(Settings(**params))

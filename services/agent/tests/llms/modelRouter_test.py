@@ -86,6 +86,7 @@ def test_route_endpoint_explains(tmp_path):
         db_path=str(tmp_path / "t.db"),
         _env_file=None,
         nvidia_api_key="",
+        provider="mock",
     )
     with open_authorized_client(create_app(settings)) as client:
         res = client.post("/route", json={"prompt": "fix this traceback"})

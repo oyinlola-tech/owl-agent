@@ -31,6 +31,7 @@ def fuzz_app(tmp_path_factory):
         nvidia_api_key="",
         step_delay=0.01,
         require_token=False,
+        provider="mock",
     )
     app = create_app(settings)
     app.state.browser = None

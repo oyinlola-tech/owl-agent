@@ -14,6 +14,8 @@ from app.settings.serviceSettings_setting import Settings
 
 AGENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.environ["GIT_TEMPLATE_DIR"] = tempfile.mkdtemp(prefix="owl-test-git-template-")
+# Security: tests never touch the real system keychain; keys go to a temp data dir file.
+os.environ["OWL_SECRET_STORE"] = "file"
 
 
 @pytest.fixture()
@@ -23,7 +25,9 @@ def db_file(tmp_path):
 
 @pytest.fixture()
 def fast_settings(db_file) -> Settings:
-    return Settings(step_delay=0.01, db_path=db_file, _env_file=None, nvidia_api_key="")
+    return Settings(
+        step_delay=0.01, db_path=db_file, _env_file=None, nvidia_api_key="", provider="mock"
+    )
 
 
 @pytest.fixture()
@@ -34,7 +38,9 @@ def client(fast_settings: Settings):
 
 @pytest.fixture()
 def slow_settings(db_file) -> Settings:
-    return Settings(step_delay=5.0, db_path=db_file, _env_file=None, nvidia_api_key="")
+    return Settings(
+        step_delay=5.0, db_path=db_file, _env_file=None, nvidia_api_key="", provider="mock"
+    )
 
 
 @pytest.fixture()
@@ -56,6 +62,7 @@ def live_server(tmp_path_factory):
         NVIDIA_API_KEY="",
         OWL_NVIDIA_API_KEY="",
         OWL_SERVICE_TOKEN=LIVE_SERVER_TOKEN,
+        OWL_PROVIDER="mock",
     )
     proc = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "--factory", "app:create_app", "--port", str(port)],

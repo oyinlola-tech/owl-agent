@@ -76,10 +76,5 @@ def test_network_commands_are_detected(command, suffix):
 
 
 @pytest.mark.parametrize("argv", [["/usr/bin/sudo", "id"], ["env", "sudo", "id"]])
-@pytest.mark.xfail(
-    strict=True,
-    reason="Known finding: privilege escalation is only refused when argv[0] is literally "
-    "sudo/su/doas, so an absolute path or a wrapper such as env slips through as ok",
-)
 def test_privilege_escalation_through_path_or_wrapper_is_refused(argv):
     assert assess_command_risk(argv)[0] == "refused"

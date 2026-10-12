@@ -94,11 +94,6 @@ def test_sensitive_files_need_explicit_permission(guarded_workspace, relative):
     "credential_file",
     [".aws/credentials", ".netrc", ".git-credentials", ".pypirc", ".docker/config.json", ".ENV"],
 )
-@pytest.mark.xfail(
-    strict=True,
-    reason="Known finding: the sensitive-path list misses common credential files and "
-    "case variants, so fs_read returns them without allow_sensitive",
-)
 def test_common_credential_files_need_explicit_permission(guarded_workspace, credential_file):
     guard, _ = guarded_workspace
     with pytest.raises(WorkspaceError):
@@ -106,11 +101,6 @@ def test_common_credential_files_need_explicit_permission(guarded_workspace, cre
 
 
 @pytest.mark.parametrize("hostile", ["src/\x00/main.py", "src/\udcff"])
-@pytest.mark.xfail(
-    strict=True,
-    reason="Known finding: NUL bytes and lone surrogates raise ValueError/UnicodeEncodeError "
-    "instead of WorkspaceError, so a model-supplied path can crash a tool call",
-)
 def test_unencodable_paths_are_refused_cleanly(guarded_workspace, hostile):
     guard, _ = guarded_workspace
     with pytest.raises(WorkspaceError):

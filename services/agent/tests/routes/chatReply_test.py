@@ -69,8 +69,9 @@ def test_verify_reports_unconfigured(tmp_path):
     )
     with open_authorized_client(fresh(settings)) as client:
         res = client.post("/provider/verify")
-        assert res.json()["ok"] is True
-        assert res.json()["provider"] == "mock"
+        assert res.json()["ok"] is False
+        assert res.json()["provider"] == "none"
+        assert res.json()["code"] == "provider_not_configured"
 
 
 def test_verify_reports_failing_provider():
