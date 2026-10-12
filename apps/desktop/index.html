@@ -4,8 +4,17 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/owl.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="OWL Agent is a local-first desktop workspace where you can see what the AI does, approve its actions, and take over at any point." />
-    <title>OWL Agent - AI Development Workspace</title>
+    <meta name="description" content="OWL is a local-first AI engineer that reads your repo, proposes every edit as a diff, and waits for your approval before it changes anything." />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#191919" media="(prefers-color-scheme: dark)" />
+    <title>OWL — the AI engineer that shows its work</title>
+    <script>
+      try {
+        var t = localStorage.getItem("owl-theme");
+        if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    </script>
   </head>
 
   <body>
