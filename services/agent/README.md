@@ -20,7 +20,11 @@ Requires Python 3.11+ (developed on 3.14).
 All settings are environment variables (`OWL_` prefix), see `.env.example`:
 
 - `OWL_HOST` / `OWL_PORT` (default `127.0.0.1:8000`)
-- `OWL_DB_PATH` — SQLite file (default `~/.local/share/owl-agent/owl.db`)
+- `OWL_DATA_DIR` — data folder (default from `platformdirs`: Linux `$XDG_DATA_HOME/owl`,
+  macOS `~/Library/Application Support/OWL`, Windows `%APPDATA%\OWL`). It holds `data/owl.db`,
+  `screenshots/`, `backups/`, `logs/`, `exports/` and `service.token`. An old
+  `~/.local/share/owl-agent/owl.db` is copied in automatically on first start (old file kept).
+- `OWL_DB_PATH` — SQLite file override (tests; the data folder is then its parent)
 - `OWL_TRUSTED_ORIGINS` — extra CORS origins, comma-separated
 - `OWL_MAX_BODY_BYTES`, `OWL_STEP_DELAY`
 - `OWL_WORKSPACES` — comma-separated authorized project roots (required
@@ -34,8 +38,17 @@ All settings are environment variables (`OWL_` prefix), see `.env.example`:
 - `OWL_MEMORY_RETENTION` — memory history cap
 - `OWL_MAX_VERIFICATION_ATTEMPTS` (default 3) — verify-then-fix rounds before
   a task fails; `OWL_VERIFY_TIMEOUT` (default 600s) — per verification command
-- `NVIDIA_API_KEY` — enables the real adapter; without it the deterministic
-  mock answers. The key is never logged or returned.
+- `NVIDIA_API_KEY` — enables the NVIDIA adapter (shown as "from environment",
+  read-only). The key is never logged or returned.
+- `OWL_PROVIDER` — `mock` selects the deterministic mock model (tests and QA
+  only); a preset id (`openai`, `anthropic`, `ollama`, ...) forces that
+  provider. With nothing configured the active provider is `none` and chat or
+  task creation return 409 `provider_not_configured` ("Connect a model first").
+- `OWL_SECRET_STORE` — `auto` (system keychain via `keyring`, service
+  `owl-agent`, falling back to a 0600 `provider-keys.json` in the data folder),
+  `keyring`, or `file`. `OWL_ANTHROPIC_BASE_URL` overrides the Claude API URL
+  for proxies; `OWL_PROVIDER_TIMEOUT`, `OWL_PROVIDER_MAX_TOKENS` tune the
+  OpenAI-compatible adapter.
 
 ## Start
 
@@ -48,7 +61,7 @@ Health: `curl localhost:8000/health` (the only route that needs no token).
 Every other request needs the service token, see "Local service token" below:
 
 ```bash
-TOKEN=$(cat ~/.local/share/owl-agent/service.token)
+TOKEN=$(cat ~/.local/share/owl/service.token)
 curl -H "Authorization: Bearer $TOKEN" localhost:8000/security/status
 ```
 
@@ -82,9 +95,11 @@ Every folder holds at most five files (plus `__init__.py`), each named
 | `app/tools/` (+ `handlers/`) | tool registry, argument models, handlers for files, git, terminal, browser |
 | `app/executors/` | command execution, git, browser, file change journal |
 | `app/guards/` | workspace access, approval binding, command risk, env and secret scrubbing |
-| `app/llms/` (+ `providers/`) | model registry, router, usage; NVIDIA and mock providers |
+| `app/llms/` (+ `providers/`, `adapters/`, `connections/`) | model registry, router, usage, provider switching; OpenAI-compatible and Claude adapters, presets, URL rules, key storage, local discovery |
 | `app/contexts/`, `app/memories/`, `app/events/` | context budgets, memory store, SSE event bus |
-| `app/databases/`, `app/schemas/` | SQLite schema and connection; Pydantic shapes by domain |
+| `app/databases/`, `app/schemas/` | SQLite schema, numbered migrations, backups; Pydantic shapes by domain |
+| `app/storages/` | data-folder bootstrap, integrity/restore, export/import/reset, scrubbed rotating logs |
+| `app/projects/` | saved projects (persisted workspace roots), file tree/read/save/search, user commands |
 
 `tests/` mirrors `app/` with `*_test.py` files; shared helpers live in
 `tests/supports/`. `scripts/e2e/` holds the end-to-end verification run and
@@ -93,6 +108,11 @@ Every folder holds at most five files (plus `__init__.py`), each named
 ## API sketch
 
 - `GET /health`, `GET /provider` (name plus configured flag, never the key)
+- `GET /providers`, `GET /providers/local`, `PUT /providers/active`,
+  `PUT|DELETE /providers/{id}/key`, `PUT /providers/{id}/settings`,
+  `POST /providers/{id}/test`, `GET /providers/{id}/models`
+- `GET|PUT /profile`, `GET|PUT /onboarding`, `GET /tasks/{id}/memories`,
+  `GET /memory/suggestions`, `POST /memory/{id}/confirm`
 - `POST /provider/verify`, `GET /provider/models`
 - `POST /chat`, `POST /chat/stream` (SSE `chat.delta` / `chat.done` / `chat.error`)
 - `POST /tasks` (`prompt`, `project`, `workspace`, `model`),
@@ -113,6 +133,12 @@ Every folder holds at most five files (plus `__init__.py`), each named
   `/memory/clear-project`, `/memory/history`, enable/disable
 - `GET /usage` (actual provider tokens kept apart from estimates)
 - `GET /workspaces`, `GET /tools`, `POST /browser/capture`, `GET /shots/{name}`
+- `GET /data/status`, `POST /data/backup`, `GET /data/export`, `POST /data/import`,
+  `POST /data/reset` (`{"confirmation": "RESET"}`, backs up first)
+- `GET/POST /projects`, `GET/PATCH/DELETE /projects/{id}`, `GET /projects/{id}/tree`,
+  `GET/PUT /projects/{id}/file`, `GET /projects/{id}/search`, `GET /projects/{id}/git`,
+  `GET/POST /projects/{id}/commands` (POST streams SSE `command.started` /
+  `command.output` / `command.completed` / `command.error`)
 
 ## Real coding loop (Phase 5)
 
@@ -231,7 +257,11 @@ in `tests/requirements/`.
 - CORS is restricted to the desktop dev origin plus `OWL_TRUSTED_ORIGINS`.
 - Model output, browser content, files, and memories are untrusted data and
   never override policy. Everything fails closed.
-- The data folder is `0700`, and the database and `service.token` are `0600`.
+- The data folder and its subfolders are `0700`; the database, backups, logs and
+  `service.token` are `0600`. SQLite runs with WAL, `foreign_keys=ON` and `busy_timeout`; an
+  integrity check at start restores the newest good backup if the file is damaged (the damaged
+  file is kept). Backups use the SQLite backup API daily and before every migration, import
+  and reset (7 daily + 4 weekly kept). Exports never include API keys or the service token.
 - `fs_search` resolves every file through the workspace guard: symlinks out of
   the workspace and sensitive files (`.env*`, keys, credentials) are skipped.
 - `browser_open` only reaches public http/https hosts. Every DNS answer is

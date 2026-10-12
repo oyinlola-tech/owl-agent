@@ -10,8 +10,12 @@ requires-python = ">=3.11"
 license = "GPL-3.0-only"
 authors = [{ name = "Oluwayemi Oyinlola" }]
 dependencies = [
+  "anthropic==1.13.0",
   "fastapi==0.143.0",
   "httpx==0.28.1",
+  "keyring==25.7.0",
+  "pathspec==1.1.1",
+  "platformdirs==4.13.0",
   "pydantic==2.14.0",
   "pydantic-settings==2.15.0",
   "uvicorn==0.54.0",
@@ -23,7 +27,7 @@ Repository = "https://github.com/oyinlola-tech/owl-agent"
 Issues = "https://github.com/oyinlola-tech/owl-agent/issues"
 
 [project.optional-dependencies]
-dev = ["pytest==9.1.1", "ruff==0.16.10"]
+dev = ["pytest==9.1.1", "ruff==0.16.10", "schemathesis==4.31.0", "hypothesis==6.169.0"]
 browser = ["playwright==1.63.0"]
 
 [tool.setuptools.packages.find]
