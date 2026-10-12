@@ -1,0 +1,30 @@
+.owl .dlp { padding-top: 64px; }
+.owl .plats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.owl .plat { padding: 28px; border-radius: var(--r-xl); background: var(--bg); box-shadow: var(--e1); display: grid; gap: 6px; align-content: start; }
+.owl .plat > svg { color: var(--ink); margin-bottom: 10px; }
+.owl .plat h3 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -0.02em; }
+.owl .plat-build { font-size: 14px; color: var(--ink-2); font-family: var(--mono); }
+.owl .plat p { margin: 4px 0 0; font-size: 15px; color: var(--ink-3); }
+.owl .plat-state { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; font-size: 13.5px; font-weight: 500; color: var(--orange); }
+.owl .dl-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.6fr); gap: 48px; margin-top: 88px; scroll-margin-top: 88px; }
+.owl .dl-steps h2 { margin: 0 0 24px; font-size: clamp(32px, 3.6vw, 44px); line-height: 1.08; }
+.owl .dl-steps ol { margin: 0; padding-left: 22px; display: grid; gap: 24px; font-size: 16.5px; color: var(--ink-2); line-height: 1.6; }
+.owl .dl-steps ol li::marker { font-weight: 600; color: var(--ink-3); }
+.owl .reqs { padding: 26px; border-radius: var(--r-xl); background: var(--bg-wash); align-self: start; position: sticky; top: 92px; }
+.owl .reqs h3 { margin: 0 0 14px; font-size: 18px; font-weight: 650; }
+.owl .reqs ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.owl .reqs li { display: flex; gap: 12px; align-items: flex-start; }
+.owl .reqs li svg { flex: none; color: var(--ink-3); margin-top: 2px; }
+.owl .reqs li b { display: block; font-size: 15px; color: var(--ink); }
+.owl .reqs li span span { display: block; }
+.owl .reqs li span { font-size: 14px; color: var(--ink-3); }
+.owl .reqs-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 20px; font-size: 14.5px; font-weight: 500; color: var(--accent); text-decoration: none; }
+.owl .reqs-link:hover { text-decoration: underline; }
+
+@media (max-width: 900px) {
+  .owl .dl-grid { grid-template-columns: minmax(0, 1fr); }
+  .owl .reqs { position: static; }
+}
+@media (max-width: 680px) {
+  .owl .plats { grid-template-columns: minmax(0, 1fr); }
+}

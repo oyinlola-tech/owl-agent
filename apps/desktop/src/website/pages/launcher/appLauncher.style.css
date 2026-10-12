@@ -1,0 +1,16 @@
+.owl .launch { padding: 120px 0 40px; }
+.owl .launch-inner { display: grid; justify-items: center; text-align: center; }
+.owl .launch-mark { margin-bottom: 28px; }
+.owl .launch-mark.waiting { animation: launch-breathe 1.6s var(--ease) infinite; }
+@keyframes launch-breathe { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.94); opacity: 0.7; } }
+.owl .launch h1 { margin: 0; font-family: var(--serif); font-weight: 560; letter-spacing: -0.022em; font-size: clamp(40px, 5.6vw, 64px); line-height: 1.04; }
+.owl .launch-status { margin: 18px 0 0; font-size: 18px; color: var(--ink-2); max-width: 52ch; }
+.owl .launch-note { margin: 10px 0 0; font-size: 15px; color: var(--ink-3); max-width: 52ch; }
+.owl .launch-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 36px; }
+@media (prefers-reduced-motion: reduce) {
+  .owl .launch-mark.waiting { animation: none; }
+}
+@media (max-width: 680px) {
+  .owl .launch { padding: 72px 0 32px; }
+  .owl .launch-actions { flex-direction: column; align-items: stretch; width: 100%; }
+}

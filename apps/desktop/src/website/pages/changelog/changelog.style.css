@@ -1,0 +1,23 @@
+.owl .log { padding-top: 72px; display: grid; gap: 0; }
+.owl .rel { display: grid; grid-template-columns: 200px 28px minmax(0, 1fr); gap: 0 24px; position: relative; padding-bottom: 72px; }
+.owl .rel::before { content: ""; position: absolute; left: calc(200px + 24px + 13px); top: 14px; bottom: 0; width: 2px; background: var(--line); }
+.owl .rel:last-child::before { bottom: 72px; }
+.owl .rel-side { display: grid; align-content: start; justify-items: start; gap: 6px; position: sticky; top: 96px; align-self: start; }
+.owl .rel-v { font-family: var(--mono); font-size: 18px; font-weight: 600; color: var(--ink); }
+.owl .rel-date { font-size: 14px; color: var(--ink-3); }
+.owl .rel-dot { width: 14px; height: 14px; margin: 8px 0 0 7px; border-radius: 50%; background: var(--bg); box-shadow: 0 0 0 3px var(--accent); position: relative; z-index: 1; }
+.owl .rel-body { min-width: 0; }
+.owl .rel-body h2 { margin: 0 0 24px; font-size: clamp(30px, 3.4vw, 42px); line-height: 1.08; }
+.owl .rel-group { margin-bottom: 28px; }
+.owl .rel-group h3 { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; font-size: 17px; font-weight: 650; }
+.owl .rel-group ul { margin: 0; padding-left: 58px; display: grid; gap: 8px; font-size: 16px; line-height: 1.6; color: var(--ink-2); }
+.owl .rel-group li::marker { color: var(--ink-4); }
+
+@media (max-width: 680px) {
+  .owl .rel { grid-template-columns: 20px minmax(0, 1fr); gap: 0 14px; }
+  .owl .rel::before { left: 9px; }
+  .owl .rel-side { grid-column: 2; position: static; grid-auto-flow: column; justify-content: start; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .owl .rel-dot { grid-column: 1; grid-row: 1; margin: 6px 0 0 3px; }
+  .owl .rel-body { grid-column: 2; }
+  .owl .rel-group ul { padding-left: 20px; }
+}

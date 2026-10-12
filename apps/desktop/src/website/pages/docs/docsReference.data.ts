@@ -1,0 +1,112 @@
+export const DOCS_TABLE_OF_CONTENTS: { id: string; label: string; sub?: { id: string; label: string }[] }[] = [
+  { id: "start", label: "Getting started", sub: [
+    { id: "start-app", label: "Run the desktop app" },
+    { id: "start-service", label: "Start the agent service" },
+    { id: "start-connect", label: "Connect a model and a project" },
+  ] },
+  { id: "concepts", label: "Concepts", sub: [
+    { id: "c-tasks", label: "Tasks" },
+    { id: "c-approvals", label: "Approvals" },
+    { id: "c-journal", label: "Checkpoints and the change journal" },
+    { id: "c-memory", label: "Memory" },
+    { id: "c-routing", label: "Model routing" },
+    { id: "c-context", label: "Context budget" },
+  ] },
+  { id: "config", label: "Configuration" },
+  { id: "shortcuts", label: "Keyboard shortcuts" },
+  { id: "api", label: "API reference" },
+];
+
+export const ENVIRONMENT_VARIABLES: { name: string; def: string; what: string }[] = [
+  { name: "OWL_HOST / OWL_PORT", def: "127.0.0.1:8000", what: "Where the local service listens." },
+  { name: "OWL_DB_PATH", def: "~/.local/share/owl-agent/owl.db", what: "SQLite file for tasks, approvals, memory, and usage." },
+  { name: "OWL_WORKSPACES", def: "(none)", what: "Comma-separated project roots. Required before files, terminal, or Git can be touched." },
+  { name: "OWL_TRUSTED_ORIGINS", def: "(none)", what: "Extra CORS origins, comma-separated." },
+  { name: "OWL_MAX_BODY_BYTES", def: "—", what: "Largest request body the service accepts." },
+  { name: "OWL_STEP_DELAY", def: "—", what: "Pause between agent steps." },
+  { name: "OWL_EXEC_TIMEOUT", def: "—", what: "How long a command may run before it is stopped." },
+  { name: "OWL_EXEC_OUTPUT_LIMIT", def: "—", what: "Maximum command output kept per call." },
+  { name: "OWL_APPROVAL_TTL", def: "1800 seconds", what: "How long an unused approval stays valid." },
+  { name: "OWL_MAX_ITERATIONS", def: "—", what: "Loop budget: steps per task." },
+  { name: "OWL_MAX_MODEL_CALLS", def: "—", what: "Loop budget: model calls per task." },
+  { name: "OWL_MAX_ELAPSED", def: "—", what: "Loop budget: wall-clock time per task." },
+  { name: "OWL_ROUTER_DEFAULT_MODEL", def: "nvidia/llama-3.1-nemotron-70b-instruct", what: "Model used when routing has no better match." },
+  { name: "OWL_ROUTER_FALLBACK_MODEL", def: "—", what: "Model to retry with when the chosen one fails." },
+  { name: "OWL_ROUTER_ALLOW_FALLBACK", def: "—", what: "Whether fallback is allowed at all." },
+  { name: "OWL_CONTEXT_BUDGET / OWL_CONTEXT_RESERVE", def: "—", what: "Token budget per request and the share kept free for the reply." },
+  { name: "OWL_MAX_RETRIES", def: "—", what: "Retries for a failed model call." },
+  { name: "OWL_MEMORY_RETENTION", def: "—", what: "How many memory history entries are kept." },
+  { name: "NVIDIA_API_KEY", def: "(none)", what: "Enables the real provider. Without it a deterministic mock answers. Never logged or returned." },
+];
+
+export const KEYBOARD_SHORTCUTS: { keys: string[]; what: string }[] = [
+  { keys: ["Ctrl", "K"], what: "Ask OWL" },
+  { keys: ["Ctrl", "Shift", "P"], what: "Open the command palette" },
+  { keys: ["Ctrl", "J"], what: "Show or hide the terminal" },
+  { keys: ["Ctrl", "B"], what: "Show or hide the sidebar" },
+  { keys: ["Ctrl", "Shift", "E"], what: "Review changes" },
+  { keys: ["Esc"], what: "Close the palette, dialog, or Ask OWL" },
+];
+
+export const API_ENDPOINT_GROUPS: { group: string; rows: [string, string, string][] }[] = [
+  { group: "Service", rows: [
+    ["GET", "/health", "Version, provider, and whether approvals are enforced"],
+    ["GET", "/provider", "Provider name and configured flag, never the key"],
+    ["POST", "/provider/verify", "Check the key and model without spending tokens"],
+    ["GET", "/provider/models", "Model ids the provider reports"],
+    ["GET", "/workspaces", "Authorized project roots"],
+    ["GET", "/tools", "Agent tools and which ones need approval"],
+  ] },
+  { group: "Chat", rows: [
+    ["POST", "/chat", "One reply for a list of messages"],
+    ["POST", "/chat/stream", "Server-sent chat.delta, chat.done, chat.error"],
+  ] },
+  { group: "Tasks", rows: [
+    ["POST", "/tasks", "Start a task: prompt, project, workspace, model"],
+    ["GET", "/tasks", "List tasks"],
+    ["GET", "/tasks/{id}", "One task"],
+    ["GET", "/tasks/{id}/detail", "Steps, tool calls, checkpoints, usage, verifications"],
+    ["POST", "/tasks/{id}/messages", "Send a message to a running task"],
+    ["POST", "/tasks/{id}/pause", "Pause"],
+    ["POST", "/tasks/{id}/resume", "Resume from the last checkpoint"],
+    ["POST", "/tasks/{id}/cancel", "Cancel"],
+    ["GET", "/tasks/{id}/events", "Server-sent event stream for the task"],
+    ["GET", "/tasks/{id}/tool-calls", "Tool calls with status, exit code, duration"],
+  ] },
+  { group: "Approvals", rows: [
+    ["GET", "/tasks/{id}/approvals", "Approvals for a task"],
+    ["POST", "/tasks/{id}/approvals", "Request an approval"],
+    ["POST", "/tasks/{id}/approvals/{aid}/decision", "Approve or reject"],
+  ] },
+  { group: "Changes", rows: [
+    ["GET", "/tasks/{id}/checkpoints", "Saved checkpoints"],
+    ["POST", "/tasks/{id}/checkpoints", "Save a checkpoint"],
+    ["GET", "/tasks/{id}/journal", "Applied changes with before and after sizes"],
+    ["POST", "/tasks/{id}/revert", "Revert one journal entry (409 on conflict)"],
+  ] },
+  { group: "Models and context", rows: [
+    ["GET", "/models", "Model registry with status and capabilities"],
+    ["POST", "/models/refresh", "Refresh the registry from the provider"],
+    ["POST", "/models/{id}/validate", "Mark a model verified or unavailable"],
+    ["POST", "/route", "Which model a prompt would get, and why"],
+    ["POST", "/context/budget", "Token budget report for a set of parts"],
+    ["GET", "/context/compressions", "Compression history"],
+    ["GET", "/usage", "Token usage per model call"],
+  ] },
+  { group: "Memory", rows: [
+    ["GET", "/memory", "List by category and project"],
+    ["GET", "/memory/search", "Search memory"],
+    ["POST", "/memory", "Save a fact (refused if it looks like a secret)"],
+    ["PATCH", "/memory/{id}", "Edit a fact"],
+    ["DELETE", "/memory/{id}", "Delete a fact"],
+    ["POST", "/memory/{id}/disable", "Turn a fact off without deleting it"],
+    ["POST", "/memory/{id}/enable", "Turn it back on"],
+    ["POST", "/memory/clear-project", "Remove a project's memory"],
+    ["POST", "/memory/maintain", "Merge duplicates and drop empties"],
+    ["GET", "/memory/history", "Recent memory changes"],
+  ] },
+  { group: "Browser", rows: [
+    ["POST", "/browser/capture", "Title, text, and optional screenshot of a page"],
+    ["GET", "/shots/{name}", "A saved screenshot"],
+  ] },
+];

@@ -1,0 +1,48 @@
+.owl .docs { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 64px; padding-top: 56px; padding-bottom: 32px; }
+.owl .docs-toc { position: sticky; top: 92px; align-self: start; display: grid; gap: 2px; max-height: calc(100dvh - 120px); overflow-y: auto; }
+.owl .docs-toc-h { font-size: 12.5px; font-weight: 600; color: var(--ink-4); padding: 0 10px 8px; }
+.owl .docs-toc a { display: block; padding: 6px 10px; border-radius: var(--r-sm); font-size: 14.5px; font-weight: 500; color: var(--ink-2); text-decoration: none;
+  border-left: 2px solid transparent; }
+.owl .docs-toc a.sub { padding-left: 22px; font-size: 13.5px; font-weight: 400; color: var(--ink-3); }
+.owl .docs-toc a:hover { background: var(--bg-hover); color: var(--ink); }
+.owl .docs-toc a.on { color: var(--accent); background: var(--accent-soft); }
+.owl .docs-body { min-width: 0; max-width: 780px; font-size: var(--body); line-height: 1.7; color: var(--ink-2); }
+.owl .docs-body section { padding-bottom: 56px; margin-bottom: 56px; border-bottom: 1px solid var(--line); scroll-margin-top: 88px; }
+.owl .docs-body section:last-child { border-bottom: none; }
+.owl .docs-body h2 { margin: 0 0 16px; font-size: clamp(32px, 3.6vw, 44px); line-height: 1.08; color: var(--ink); }
+.owl .docs-body h3 { display: flex; align-items: center; gap: 10px; margin: 36px 0 10px; font-size: 20px; font-weight: 650; letter-spacing: -0.015em;
+  color: var(--ink); scroll-margin-top: 88px; }
+.owl .docs-body p { margin: 0 0 12px; }
+.owl .docs-body .callout { margin-top: 18px; font-size: 15px; }
+.owl .concepts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 24px; }
+.owl .concept { padding: 22px; border-radius: var(--r-lg); background: var(--bg-wash); scroll-margin-top: 88px; }
+.owl .concept h3 { margin: 0 0 10px; font-size: 18px; }
+.owl .concept p { margin: 0; font-size: 15.5px; line-height: 1.65; color: var(--ink-3); }
+.owl .concept p b { color: var(--ink-2); font-weight: 600; }
+.owl .concept p em { font-style: italic; }
+.owl .dtable { margin-top: 16px; border-radius: var(--r-lg); box-shadow: inset 0 0 0 1px var(--line); overflow-x: auto; }
+.owl .dtable table { width: 100%; border-collapse: collapse; font-size: 14.5px; line-height: 1.5; min-width: 560px; }
+.owl .dtable th { text-align: left; font-size: 13px; font-weight: 500; color: var(--ink-3); padding: 10px 16px; background: var(--bg-wash); border-bottom: 1px solid var(--line); }
+.owl .dtable td { padding: 11px 16px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--ink-2); }
+.owl .dtable tr:last-child td { border-bottom: none; }
+.owl .dtable td.mono { font-size: 13px; color: var(--ink); white-space: nowrap; }
+.owl .dtable td.dim { color: var(--ink-3); white-space: normal; overflow-wrap: anywhere; min-width: 120px; }
+.owl .keys { display: inline-flex; gap: 4px; }
+.owl .api-group h3 { font-size: 16px; margin: 32px 0 0; }
+.owl .api-m { width: 84px; }
+.owl .verb { display: inline-block; min-width: 54px; text-align: center; padding: 2px 6px; border-radius: var(--r-xs); font-family: var(--mono);
+  font-size: 11.5px; font-weight: 600; }
+.owl .v-get { background: var(--blue-bg); color: var(--blue); }
+.owl .v-post { background: var(--green-bg); color: var(--green); }
+.owl .v-patch { background: var(--yellow-bg); color: var(--yellow); }
+.owl .v-delete { background: var(--red-bg); color: var(--red); }
+
+@media (max-width: 900px) {
+  .owl .docs { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .owl .docs-toc { position: static; max-height: none; padding: 12px; border-radius: var(--r-lg); background: var(--bg-wash); }
+  .owl .docs-toc a.sub { display: none; }
+}
+@media (max-width: 680px) {
+  .owl .concepts { grid-template-columns: minmax(0, 1fr); }
+  .owl .docs-body section { padding-bottom: 40px; margin-bottom: 40px; }
+}

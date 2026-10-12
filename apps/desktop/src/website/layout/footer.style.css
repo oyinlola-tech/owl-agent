@@ -1,0 +1,19 @@
+.owl .footer { border-top: 1px solid var(--line); margin-top: 112px; }
+.owl .footer-grid { display: grid; grid-template-columns: 1.5fr repeat(3, minmax(0, 1fr)); gap: 32px; padding-top: 64px; padding-bottom: 24px; }
+.owl .footer-brand p { margin: 14px 0 18px; font-size: 15px; color: var(--ink-3); max-width: 34ch; }
+.owl .footer h6 { margin: 0 0 14px; font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.owl .footer nav a { display: block; padding: 5px 0; font-size: 14.5px; color: var(--ink-3); text-decoration: none; }
+.owl .footer nav a:hover { color: var(--ink); }
+.owl .footer-word { font-size: clamp(110px, 24vw, 320px); font-weight: 800; letter-spacing: -0.07em; line-height: 0.8; text-align: center;
+  color: transparent; -webkit-text-stroke: 1px var(--line-2); user-select: none; padding-top: 32px; overflow: hidden;
+  -webkit-mask-image: linear-gradient(#000 40%, transparent 92%); mask-image: linear-gradient(#000 40%, transparent 92%); }
+.owl .footer-bottom { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 20px; padding-bottom: 28px;
+  border-top: 1px solid var(--line); font-size: 13.5px; color: var(--ink-3); }
+
+@media (max-width: 900px) {
+  .owl .footer-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .owl .footer-brand { grid-column: 1 / -1; }
+}
+@media (max-width: 680px) {
+  .owl .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

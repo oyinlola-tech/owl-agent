@@ -1,0 +1,20 @@
+.owl .nf { padding: 120px 0 40px; }
+.owl .nf-inner { display: grid; justify-items: center; text-align: center; }
+.owl .nf-mark { margin-bottom: 28px; animation: nf-tilt 3.2s var(--ease) infinite; }
+@keyframes nf-tilt { 0%, 100% { transform: rotate(0); } 40% { transform: rotate(-9deg); } 60% { transform: rotate(7deg); } }
+.owl .nf h1 { margin: 0; font-size: clamp(44px, 6vw, 72px); line-height: 1.02; }
+.owl .nf p { margin: 18px 0 0; font-size: 18px; color: var(--ink-3); max-width: 50ch; }
+.owl .nf-links { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 44px; width: min(720px, 100%); }
+.owl .nf-link { display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: var(--r-lg); background: var(--bg); box-shadow: var(--e1);
+  text-decoration: none; text-align: left; transition: box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease); }
+.owl .nf-link:hover { box-shadow: var(--e2); transform: translateY(-2px); }
+.owl .nf-link svg { color: var(--accent); flex: none; }
+.owl .nf-link b { display: block; font-size: 15px; color: var(--ink); }
+.owl .nf-link small { display: block; font-size: 13px; color: var(--ink-3); }
+
+@media (prefers-reduced-motion: reduce) {
+  .owl .nf-mark { animation: none; }
+}
+@media (max-width: 680px) {
+  .owl .nf-links { grid-template-columns: minmax(0, 1fr); }
+}
