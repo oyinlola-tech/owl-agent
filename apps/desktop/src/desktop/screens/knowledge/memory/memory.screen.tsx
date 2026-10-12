@@ -6,9 +6,7 @@ import {
 import { useAppStore } from "../../../state/app.store";
 import { agentApi } from "../../../services/agentApi.service";
 import { type MemoryHistoryRow, type MemoryRow } from "../../../services/agentApi.types";
-import { SAMPLE_MEMORIES, SAMPLE_MEMORY_HISTORY } from "../../../services/samples/sampleCatalog.data";
-import { loadWithSampleFallback, SAMPLE_SAVE_NOTICE } from "../../../services/samples/sampleMode.helper";
-import { SampleDataBanner, EmptyState, PageHeader } from "../../../../shared/components/pageLayout.component";
+import { EmptyState, PageHeader } from "../../../../shared/components/pageLayout.component";
 import { Tag, Tile, type Hue } from "../../../../shared/components/tag.component";
 import "./memory.style.css";
 import { formatShortTimeAgo } from "../../../../shared/helpers/time.helper";
@@ -36,9 +34,8 @@ export function MemoryScreen() {
   const [memoryHistory, setMemoryHistory] = useState<MemoryHistoryRow[]>([]);
   const [view, setView] = useState<"list" | "history">("list");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
-  const [projectFilter, setProjectFilter] = useState("ZudoMart");
+  const [projectFilter, setProjectFilter] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [isSampleData, setIsSampleData] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
