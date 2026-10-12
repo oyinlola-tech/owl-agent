@@ -3,6 +3,7 @@ import { Command, Cpu, GitBranch, TerminalWindow, Tray } from "@phosphor-icons/r
 import { useAppStore } from "../state/app.store";
 import { agentApi } from "../services/agentApi.service";
 import { usePendingApprovalCount } from "../state/pendingApprovals.store";
+import { useServiceConnectionStore } from "../services/connection/serviceConnection.store";
 
 type ServiceState = "unknown" | "online" | "offline";
 
@@ -15,6 +16,7 @@ export function StatusBar({ onOpenCommandPalette }: { onOpenCommandPalette: () =
   const goToScreen = useAppStore((s) => s.goToScreen);
   const toggleTerminal = useAppStore((s) => s.toggleTerminal);
   const pendingCount = usePendingApprovalCount();
+  const serviceAuthFailed = useServiceConnectionStore((s) => s.authFailed);
   const [serviceState, setServiceState] = useState<ServiceState>("unknown");
   const [serviceVersion, setServiceVersion] = useState("");
   const checkServiceHealth = async () => {
@@ -35,8 +37,12 @@ export function StatusBar({ onOpenCommandPalette }: { onOpenCommandPalette: () =
   }, []);
   const agentHue = agentStatus === "working" ? "blue" : agentStatus === "awaiting" ? "orange" : agentStatus === "paused" || agentStatus === "stopped" ? "gray" : "green";
   const agentLabel = agentStatus === "working" ? "Agent working" : agentStatus === "paused" ? "Agent paused" : agentStatus === "awaiting" ? "Needs approval" : agentStatus === "stopped" ? "Agent stopped" : "Agent ready";
-  const serviceDotColor = serviceState === "online" ? "var(--green)" : serviceState === "offline" ? "var(--red)" : "var(--gray)";
-  const serviceLabel = serviceState === "unknown" ? "Checking service" : serviceState === "online" ? `Service v${serviceVersion}` : "Service offline";
+  const serviceLocked = serviceAuthFailed && serviceState === "online";
+  const serviceDotColor = serviceLocked ? "var(--orange)" : serviceState === "online" ? "var(--green)" : serviceState === "offline" ? "var(--red)" : "var(--gray)";
+  const serviceLabel = serviceLocked ? "Service locked" : serviceState === "unknown" ? "Checking service" : serviceState === "online" ? `Service v${serviceVersion}` : "Service offline";
+  const serviceTitle = serviceLocked
+    ? "The OWL service refused this app's token. Select to retry."
+    : serviceState === "online" ? `Python service online (v${serviceVersion})` : "Python service unreachable, running in mock mode. Select to retry.";
   return (
     <footer className="statusbar">
       <button onClick={() => { goToScreen("workspace"); useAppStore.getState().setCenterTab("changes"); }} title="Review changes">
@@ -51,7 +57,7 @@ export function StatusBar({ onOpenCommandPalette }: { onOpenCommandPalette: () =
       <span className="grow" />
       <button
         onClick={() => checkServiceHealth().catch(() => {})}
-        title={serviceState === "online" ? `Python service online (v${serviceVersion})` : "Python service unreachable, running in mock mode. Select to retry."}
+        title={serviceTitle}
       >
         <span className="live-dot" style={{ width: 6, height: 6, color: serviceDotColor }} />
         <span className="hide-s">{serviceLabel}</span>

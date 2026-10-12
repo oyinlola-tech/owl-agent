@@ -9,6 +9,8 @@ import { useGlobalShortcuts } from "./globalShortcuts.hook";
 import { Sidebar } from "./sidebar/sidebar.layout";
 import { TopBar } from "./topbar/topBar.layout";
 import { StatusBar } from "./statusBar.layout";
+import { ServiceAuthErrorPanel } from "./serviceAuthError.layout";
+import { useServiceConnectionStore } from "../services/connection/serviceConnection.store";
 import { Toast } from "../components/toast.component";
 import { CommandPaletteDialog } from "../dialogs/commandPalette.dialog";
 import { AskOwlDialog } from "../dialogs/askOwl.dialog";
@@ -56,6 +58,7 @@ export function DesktopShell({ initial = "welcome" }: { initial?: AppScreen }) {
   const setCommandPaletteOpen = useAppStore((s) => s.setCommandPaletteOpen);
   const setAskOwlOpen = useAppStore((s) => s.setAskOwlOpen);
   const goToScreen = useAppStore((s) => s.goToScreen);
+  const serviceAuthFailed = useServiceConnectionStore((s) => s.authFailed);
 
   useEffect(() => { startPendingApprovalsSync(); }, []);
 
@@ -79,7 +82,7 @@ export function DesktopShell({ initial = "welcome" }: { initial?: AppScreen }) {
       <Sidebar />
       <div className="main">
         <TopBar onOpenCommandPalette={() => setCommandPaletteOpen(true)} onOpenAskOwl={() => setAskOwlOpen(true)} />
-        <ActiveScreen />
+        {serviceAuthFailed ? <ServiceAuthErrorPanel /> : <ActiveScreen />}
         <StatusBar onOpenCommandPalette={() => setCommandPaletteOpen(true)} />
       </div>
       {commandPaletteOpen && <CommandPaletteDialog />}
