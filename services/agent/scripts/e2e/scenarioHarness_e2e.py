@@ -6,7 +6,7 @@ import time
 import traceback
 
 from fastapi.testclient import TestClient
-from supports.scriptedProvider_support import ScriptedProvider, build_e2e_app
+from supports.scriptedProvider_support import ScriptedProvider, build_e2e_app, open_e2e_client
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 AGENT_DIR = os.path.dirname(os.path.dirname(HERE))
@@ -99,4 +99,4 @@ def register_scenario(name: str):
 
 def build_test_client(ws: str, provider: ScriptedProvider, **extra) -> tuple[TestClient, str]:
     db = os.path.join(os.path.dirname(ws), "owl.db")
-    return TestClient(build_e2e_app(db, ws, provider, **extra)), db
+    return open_e2e_client(build_e2e_app(db, ws, provider, **extra)), db

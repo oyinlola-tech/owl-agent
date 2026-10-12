@@ -8,7 +8,6 @@ import sys
 import time
 
 import httpx
-from fastapi.testclient import TestClient
 from scenarioHarness_e2e import (
     AGENT_DIR,
     SERVER_SCRIPT,
@@ -20,7 +19,12 @@ from scenarioHarness_e2e import (
     print_verification_runs,
     register_scenario,
 )
-from supports.scriptedProvider_support import ScriptedProvider, build_e2e_app
+from supports.scriptedProvider_support import (
+    E2E_HEADERS,
+    ScriptedProvider,
+    build_e2e_app,
+    open_e2e_client,
+)
 
 
 def find_free_port() -> int:
@@ -58,7 +62,7 @@ def start_server_and_kill_mid_verification(ws: str, db: str) -> str:
                     break
             except httpx.HTTPError:
                 time.sleep(0.1)
-        api = httpx.Client(base_url=base, timeout=10)
+        api = httpx.Client(base_url=base, timeout=10, headers=E2E_HEADERS)
         tid = api.post("/tasks", json={"prompt": "add add()", "workspace": ws}).json()["id"]
         end = time.time() + 60
         running = None
@@ -102,7 +106,7 @@ def verify_crash_recovery():
         except OSError:
             pass
     assert not leftover, f"recover() left {len(leftover)} orphaned check process(es)"
-    with TestClient(app2) as api2:
+    with open_e2e_client(app2) as api2:
         rows = list_verification_runs(api2, tid)
         print_verification_runs(rows)
         assert rows and rows[-1]["status"] == "interrupted", rows

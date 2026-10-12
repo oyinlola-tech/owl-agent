@@ -15,6 +15,11 @@ from app import create_app  # noqa: E402
 from app.settings.serviceSettings_setting import Settings  # noqa: E402
 
 Act = Callable[[str, dict], dict]
+E2E_SERVICE_TOKEN = "owl-e2e-service-token-0123456789"
+E2E_HEADERS = {
+    "Authorization": f"Bearer {E2E_SERVICE_TOKEN}",
+    "Content-Type": "application/json",
+}
 
 
 class ScriptedProvider:
@@ -62,9 +67,16 @@ def build_e2e_settings(db: str, workspace: str, **extra) -> Settings:
         _env_file=None,
         nvidia_api_key="",
         verify_timeout=120.0,
+        service_token=E2E_SERVICE_TOKEN,
     )
     params.update(extra)
     return Settings(**params)
+
+
+def open_e2e_client(app):
+    from fastapi.testclient import TestClient
+
+    return TestClient(app, base_url="http://127.0.0.1:8000", headers=E2E_HEADERS)
 
 
 def build_e2e_app(db: str, workspace: str, provider: ScriptedProvider, **extra):
