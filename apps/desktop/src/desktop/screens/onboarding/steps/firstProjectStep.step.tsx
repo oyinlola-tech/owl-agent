@@ -1,5 +1,6 @@
 import { FolderOpen, Info } from "@phosphor-icons/react";
 import { useOnboardingStore } from "../onboarding.state";
+import { canPickFolderNatively, pickProjectFolder } from "../../../services/folderPicker.service";
 
 function folderName(path: string): string {
   const trimmed = path.replace(/[/\\]+$/, "");
@@ -10,6 +11,11 @@ function folderName(path: string): string {
 export function FirstProjectStep() {
   const path = useOnboardingStore((s) => s.projectName);
   const setPath = useOnboardingStore((s) => s.setProjectName);
+  const native = canPickFolderNatively();
+  const chooseFolder = async () => {
+    const chosen = await pickProjectFolder().catch(() => null);
+    if (chosen) setPath(chosen);
+  };
   return (
     <div className="ob-project">
       <label className="pv-field">
@@ -17,10 +23,11 @@ export function FirstProjectStep() {
         <div className="input-wrap">
           <FolderOpen size={15} />
           <input
-            className="input pv-mono" value={path} spellCheck={false}
+            className="input pv-mono" value={path} spellCheck={false} readOnly={native}
             placeholder="~/Projects/my-app" aria-label="Project folder"
             onChange={(event) => setPath(event.target.value)}
           />
+          {native && <button type="button" className="btn btn-secondary btn-sm" onClick={() => void chooseFolder()}>Choose…</button>}
         </div>
         <span className="hint">Point OWL at an existing folder on this computer. {path ? <>OWL will open <b>{folderName(path)}</b>.</> : null}</span>
       </label>

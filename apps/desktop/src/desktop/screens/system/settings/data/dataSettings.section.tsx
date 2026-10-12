@@ -5,7 +5,8 @@ import { agentApi } from "../../../../services/agentApi.service";
 import { canPickFolderNatively, pickImportArchive } from "../../../../services/folderPicker.service";
 import type { DataStatus } from "../../../../services/agentApi.types";
 import { useAsyncResource } from "../../../../hooks/useAsyncResource.hook";
-import { EmptyState, SectionTitle } from "../../../../../shared/components/pageLayout.component";
+import { EmptyState } from "../../../../../shared/components/pageLayout.component";
+import { SettingValueRow } from "../settingRow.component";
 
 const RESET_PHRASE = "RESET";
 
@@ -42,7 +43,7 @@ export function DataSettingsSection() {
       anchor.download = "owl-export.zip";
       anchor.click();
       URL.revokeObjectURL(url);
-      notify("Export downloaded (API keys are never included).");
+      notify("Export downloaded. API keys are never included.");
     } catch (e) { notify(e instanceof Error ? e.message : "Export failed."); }
     finally { setBusy(""); }
   };
@@ -73,7 +74,7 @@ export function DataSettingsSection() {
       .finally(() => setBusy(""));
   };
 
-  if (status.status === "loading") return <div className="set-note">Reading data status…</div>;
+  if (status.status === "loading") return <div className="surface pg-setgroup"><p className="pg-muted pg-p">Reading data status…</p></div>;
   if (status.status === "error" || !status.data) {
     return (
       <EmptyState icon={WarningCircle} hue={status.unauthorized ? "orange" : "red"}
@@ -85,35 +86,34 @@ export function DataSettingsSection() {
   }
   const data = status.data;
   return (
-    <div className="set-section">
-      <SectionTitle>Data management</SectionTitle>
-      <p className="set-lede">OWL stores everything on this computer. These controls back up, move, and reset that local data. Your API keys live in the system keyring, never in exports, and reset keeps them.</p>
-
-      <div className="set-card">
-        <div className="set-row">
-          <span className="t"><b>Data folder</b><small className="mono">{data.data_dir}{data.data_dir_overridden ? " (OWL_DATA_DIR)" : ""}</small></span>
-        </div>
-        <div className="set-row">
-          <span className="t"><b>Database</b><small>{formatBytes(data.database_bytes)} · schema v{data.schema_version}/{data.latest_schema_version} · {data.journal_mode}</small></span>
-        </div>
-        <div className="set-row">
+    <>
+      <div className="surface pg-setgroup">
+        <h4>Local data</h4>
+        <p className="pg-muted pg-p">OWL stores everything on this computer. API keys live in the system keyring, never in exports, and a reset keeps them.</p>
+        <SettingValueRow title="Data folder" sub={data.data_dir_overridden ? "Set with OWL_DATA_DIR" : "Default location for this platform"}>
+          <span className="pg-mono">{data.data_dir}</span>
+        </SettingValueRow>
+        <SettingValueRow title="Database" sub={`schema v${data.schema_version} of ${data.latest_schema_version} · ${data.journal_mode}`}>
+          <span className="pg-mono">{formatBytes(data.database_bytes)}</span>
+        </SettingValueRow>
+        <div className="pg-setrow">
           <span className="t"><b>Backups</b><small>{data.backups.length} kept{data.last_backup_at ? ` · latest ${new Date(data.last_backup_at).toLocaleString()}` : ""} · keeps {data.backup_policy.daily} daily, {data.backup_policy.weekly} weekly</small></span>
           <button className="btn btn-secondary btn-sm" disabled={busy === "backup"} onClick={() => void backupNow()}><FloppyDisk size={14} /> Back up now</button>
         </div>
       </div>
 
-      <SectionTitle>Export &amp; import</SectionTitle>
-      <div className="set-card">
-        <div className="set-row">
-          <span className="t"><b>Export data</b><small>A zip of your projects, tasks, memory and history. API keys are never included.</small></span>
+      <div className="surface pg-setgroup">
+        <h4>Export &amp; import</h4>
+        <div className="pg-setrow">
+          <span className="t"><b>Export data</b><small>A zip of your projects, tasks, memory, and history. API keys are never included.</small></span>
           <button className="btn btn-secondary btn-sm" disabled={busy === "export"} onClick={() => void exportData()}><DownloadSimple size={14} /> Export</button>
         </div>
-        <div className="set-row">
-          <span className="t">
+        <div className="pg-setrow">
+          <span className="t" style={{ flex: 1 }}>
             <b>Import data</b>
             <span className="input-wrap" style={{ marginTop: 6 }}>
               <Database size={14} />
-              <input className="input mono" value={importPath} placeholder="Path to an OWL export (.zip)" readOnly={native}
+              <input className="input pg-mono" value={importPath} placeholder="Path to an OWL export (.zip)" readOnly={native}
                 aria-label="Import archive path" onChange={(e) => setImportPath(e.target.value)} />
               {native && <button className="btn btn-secondary btn-sm" onClick={() => void chooseImport()}><FolderOpen size={14} /> Choose…</button>}
             </span>
@@ -122,19 +122,17 @@ export function DataSettingsSection() {
         </div>
       </div>
 
-      <SectionTitle>Danger zone</SectionTitle>
-      <div className="set-card set-danger">
-        <div className="set-row">
-          <span className="t"><b>Reset local data</b><small>Permanently clears projects, tasks, memory, and history after backing up first. Your saved API keys in the keyring are kept. This cannot be undone.</small></span>
-        </div>
-        <div className="set-row">
-          <span className="input-wrap">
+      <div className="surface pg-setgroup">
+        <h4>Reset</h4>
+        <p className="pg-muted pg-p">Permanently clears projects, tasks, memory, and history after backing up first. Your saved API keys in the keyring are kept. This cannot be undone.</p>
+        <div className="pg-setrow">
+          <span className="input-wrap" style={{ flex: 1 }}>
             <Trash size={14} />
             <input className="input" value={resetText} placeholder={`Type ${RESET_PHRASE} to confirm`} aria-label="Type RESET to confirm" onChange={(e) => setResetText(e.target.value)} />
           </span>
-          <button className="btn btn-danger btn-sm" disabled={resetText !== RESET_PHRASE || busy === "reset"} onClick={resetData}><Trash size={14} /> Reset data</button>
+          <button className="btn btn-secondary btn-sm" disabled={resetText !== RESET_PHRASE || busy === "reset"} onClick={resetData}><Trash size={14} /> Reset data</button>
         </div>
       </div>
-    </div>
+    </>
   );
 }
