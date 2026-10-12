@@ -106,6 +106,20 @@ class SqliteMemoryStore(MemoryStore):
         row = self.conn.execute("SELECT * FROM memories WHERE id = ?", (memory_id,)).fetchone()
         return dict(row) if row else None
 
+    def confirm_memory(self, memory_id: str, text: str | None = None) -> dict | None:
+        if text is not None and self.update_memory_text(memory_id, text) is None:
+            return None
+        cur = self.conn.execute(
+            "UPDATE memories SET confirmed = 1, updated_at = ? WHERE id = ?",
+            (current_utc_time().isoformat(), memory_id),
+        )
+        if cur.rowcount == 0:
+            return None
+        self.log_memory_history(memory_id, "confirmed", "")
+        self.conn.commit()
+        row = self.conn.execute("SELECT * FROM memories WHERE id = ?", (memory_id,)).fetchone()
+        return dict(row) if row else None
+
     def delete_memory(self, memory_id):
         row = self.conn.execute("SELECT * FROM memories WHERE id = ?", (memory_id,)).fetchone()
         if row is None:
