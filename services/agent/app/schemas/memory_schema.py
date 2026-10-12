@@ -13,3 +13,7 @@ class MemoryCreate(BaseModel):
 
 class MemoryUpdate(BaseModel):
     text: str = Field(min_length=1, max_length=4000)
+
+
+class MemoryConfirm(BaseModel):
+    text: str | None = Field(default=None, min_length=1, max_length=4000)
