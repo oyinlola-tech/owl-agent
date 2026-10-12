@@ -1,13 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowCounterClockwise, ArrowSquareOut, BookOpenText, Brain, ClockCounterClockwise, Command, Cpu, File, FolderOpen,
+  ArrowSquareOut, BookOpenText, Brain, ClockCounterClockwise, Command, Cpu, File, FolderOpen,
   Gear, GitCommit, GitDiff, Globe, House, Kanban, Keyboard, MagnifyingGlass, Moon, Pause, Play, Plus, Question,
-  SidebarSimple, Sparkle, Terminal, TerminalWindow, TestTube, Tray, UploadSimple, Wrench,
+  SidebarSimple, Sparkle, Terminal, TerminalWindow, Tray, UploadSimple, Wrench,
   type Icon,
 } from "@phosphor-icons/react";
 import { useAppStore } from "../state/app.store";
-import { COMMANDS } from "../services/samples/sampleWorkspace.data";
 import type { AppScreen } from "../state/workspace.types";
+
+const COMMANDS = [
+  "New Task", "Ask OWL", "Pause Agent", "Resume Agent",
+  "Go to Home", "Go to Inbox", "Go to Tasks", "Go to Memory", "Go to Playbooks", "Go to Change history",
+  "Go to Models & usage", "Go to Agent tools", "Go to Help",
+  "Open Project", "Open File", "Search Project", "Open Browser", "Open Settings",
+  "Run Command", "Open Terminal", "Toggle Sidebar", "Toggle Inspector",
+  "Toggle Terminal", "Review Changes",
+  "Git Commit", "Git Push",
+  "Keyboard shortcuts", "Toggle theme", "Back to website",
+];
 import { navigateTo } from "../../shared/hooks/currentPath.hook";
 import { toggleLightDarkTheme } from "../../shared/hooks/themeMode.hook";
 import "../styles/dialog.style.css";
@@ -34,13 +44,11 @@ const COMMAND_META: Record<string, { icon: Icon; group: CommandGroup; keys?: str
   "Open Browser": { icon: Globe, group: "Navigation" },
   "Open Settings": { icon: Gear, group: "Navigation" },
   "Run Command": { icon: Terminal, group: "Workspace" },
-  "Run Tests": { icon: TestTube, group: "Workspace" },
   "Open Terminal": { icon: TerminalWindow, group: "Workspace" },
   "Toggle Terminal": { icon: TerminalWindow, group: "Workspace", keys: ["Ctrl", "J"] },
   "Toggle Sidebar": { icon: SidebarSimple, group: "Workspace", keys: ["Ctrl", "B"] },
   "Toggle Inspector": { icon: SidebarSimple, group: "Workspace" },
   "Review Changes": { icon: GitDiff, group: "Workspace", keys: ["Ctrl", "⇧", "E"] },
-  "Undo Change": { icon: ArrowCounterClockwise, group: "Workspace" },
   "Git Commit": { icon: GitCommit, group: "Git" },
   "Git Push": { icon: UploadSimple, group: "Git" },
   "Keyboard shortcuts": { icon: Keyboard, group: "App", keys: ["?"] },
@@ -72,14 +80,12 @@ function runPaletteCommand(command: string) {
   else if (command === "Toggle Inspector") { goToWorkspace(); state.toggleInspector(); }
   else if (command === "Open File" || command === "Search Project") { goToWorkspace(); state.setFilePanelSection("search"); }
   else if (command === "Review Changes") { goToWorkspace(); state.setCenterTab("changes"); }
-  else if (command === "Undo Change") state.undoLastFileChange();
   else if (command === "Pause Agent") state.pauseAgent();
   else if (command === "Resume Agent") state.resumeAgent();
   else if (command === "Run Command") {
     goToWorkspace(); openTerminal(); state.setTerminalTab("agent");
     setTimeout(() => document.querySelector<HTMLInputElement>(".tin input")?.focus(), 60);
-  } else if (command === "Run Tests") { goToWorkspace(); openTerminal(); state.setTerminalTab("agent"); state.runTerminalCommand("go test ./..."); }
-  else if (command === "Git Commit") { goToWorkspace(); state.setCenterTab("changes"); state.showNotice("Review the changes, then ask OWL to commit. Commits always ask for approval."); }
+  } else if (command === "Git Commit") { goToWorkspace(); state.setCenterTab("changes"); state.showNotice("Review the changes, then ask OWL to commit. Commits always ask for approval."); }
   else if (command === "Git Push") state.showNotice("Pushing always asks for approval. Ask OWL to push from the chat.");
   else if (command === "Keyboard shortcuts") state.setShortcutsOpen(true);
   else if (command === "Toggle theme") toggleLightDarkTheme();

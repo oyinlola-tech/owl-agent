@@ -1,5 +1,6 @@
 import { ArrowSquareOut, CaretUpDown, Gear, Keyboard, Monitor, Moon, Question, Sun } from "@phosphor-icons/react";
 import { useAppStore } from "../../state/app.store";
+import { useDisplayName } from "../../hooks/profile/useDisplayName.hook";
 import { OwlMark } from "../../../shared/components/owlMark.component";
 import { navigateTo } from "../../../shared/hooks/currentPath.hook";
 import { applyThemeMode, toggleLightDarkTheme, useThemeMode } from "../../../shared/hooks/themeMode.hook";
@@ -13,12 +14,15 @@ export function AccountMenu({ collapsed }: { collapsed: boolean }) {
   const [themeMode, appliedTheme] = useThemeMode();
   const popover = usePopover(collapsed ? "right-end" : "top-start");
   const closeAndRun = (action: () => void) => { popover.close(false); action(); };
+  const displayName = useDisplayName();
+  const accountName = displayName || "Local workspace";
+  const avatarLetter = (displayName || "O").slice(0, 1).toUpperCase();
   return (
     <div className="sb-user-row">
       <button ref={popover.trigger} className="sb-user" onClick={popover.toggle} aria-haspopup="dialog" aria-expanded={popover.open}
         aria-label="Account and app menu" data-tip={collapsed ? "Account" : undefined}>
-        <span className="sb-avatar">O</span>
-        <span className="sb-user-text sb-hide"><b>Oluwayemi</b><small>Local workspace</small></span>
+        <span className="sb-avatar">{avatarLetter}</span>
+        <span className="sb-user-text sb-hide"><b>{accountName}</b><small>Local workspace</small></span>
         <CaretUpDown size={13} className="sb-hide" />
       </button>
       <button className="sb-mini sb-hide sb-theme" onClick={() => toggleLightDarkTheme()} aria-label={appliedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
@@ -27,8 +31,8 @@ export function AccountMenu({ collapsed }: { collapsed: boolean }) {
       </button>
       <Popover popover={popover} label="Account menu" className="pop-account">
         <div className="pop-user">
-          <span className="sb-avatar sb-avatar-lg">O</span>
-          <span className="pop-main"><b>Oluwayemi</b><small>Local workspace · this computer</small></span>
+          <span className="sb-avatar sb-avatar-lg">{avatarLetter}</span>
+          <span className="pop-main"><b>{accountName}</b><small>Local workspace · this computer</small></span>
         </div>
         <div className="pop-sep" />
         <button className="pop-item" onClick={() => closeAndRun(() => goToScreen("settings"))}><Gear size={16} /><span className="pop-main">Settings</span></button>

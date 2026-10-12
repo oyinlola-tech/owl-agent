@@ -2,7 +2,8 @@ import { useState } from "react";
 import { BookOpenText, ListChecks, MagnifyingGlass, ShieldCheck } from "@phosphor-icons/react";
 import { useAppStore } from "../../../state/app.store";
 import { agentApi } from "../../../services/agentApi.service";
-import { PROJECTS } from "../../../services/samples/sampleWorkspace.data";
+import type { Project } from "../../../services/agentApi.types";
+import { useProjects } from "../../../hooks/useProjects.hook";
 import { PageHeader } from "../../../../shared/components/pageLayout.component";
 import { copyTextAndNotify } from "../../../../shared/helpers/clipboard.helper";
 import { PLAYBOOK_CATEGORIES, PLAYBOOKS, type Playbook, type PlaybookCategory } from "./playbookCatalog.data";
@@ -17,6 +18,7 @@ export function PlaybooksScreen() {
   const openProject = useAppStore((s) => s.openProject);
   const openBackendTask = useAppStore((s) => s.openBackendTask);
   const currentProject = useAppStore((s) => s.project);
+  const { projects } = useProjects();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<PlaybookCategory | "All">("All");
@@ -30,23 +32,23 @@ export function PlaybooksScreen() {
     .map((category) => ({ ...category, items: matchingPlaybooks.filter((playbook) => playbook.cat === category.id) }))
     .filter((group) => group.items.length > 0);
 
-  const runInWorkspace = (prompt: string, projectName: string) => {
-    const project = PROJECTS.find((candidate) => candidate.name === projectName) ?? PROJECTS[0];
-    if (currentProject?.name !== project.name) openProject(project);
+  const runInWorkspace = (prompt: string, project: Project | null) => {
+    if (!project) { showNotice("Add a project first, then run a playbook"); return; }
+    if (currentProject?.id !== project.id) openProject(project);
     setDraft(prompt);
     setCenterTab("chat");
     goToScreen("workspace");
     showNotice("Prompt ready in the workspace — press Enter to send");
   };
 
-  const startBackendTask = async (prompt: string, projectName: string) => {
+  const startBackendTask = async (prompt: string, project: Project | null) => {
+    if (!project) { showNotice("Add a project first, then run a playbook"); return; }
     try {
-      const workspaces = await agentApi.workspaces();
-      const task = await agentApi.createBackendTask(prompt, projectName, workspaces.roots[0] ?? "");
-      showNotice("Backend task started");
+      const task = await agentApi.createBackendTask(prompt, project.name, project.path);
+      showNotice("Task started");
       openBackendTask(task.id);
     } catch {
-      showNotice("The OWL service is offline — run it in the workspace or copy the prompt");
+      showNotice("The OWL service isn't running — run it in the workspace or copy the prompt");
     }
   };
 
@@ -104,7 +106,8 @@ export function PlaybooksScreen() {
       {openPlaybook && (
         <PlaybookDrawer
           playbook={openPlaybook}
-          defaultProject={currentProject?.name ?? PROJECTS[0].name}
+          projects={projects}
+          defaultProjectId={currentProject?.id ?? projects[0]?.id ?? ""}
           onClose={() => setOpenPlaybook(null)}
           onRunInWorkspace={runInWorkspace}
           onStartBackendTask={startBackendTask}

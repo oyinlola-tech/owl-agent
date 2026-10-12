@@ -7,16 +7,14 @@ import { useAppStore } from "../../../state/app.store";
 import { pendingApprovalKey, usePendingApprovalsStore } from "../../../state/pendingApprovals.store";
 import { agentApi, ApiError } from "../../../services/agentApi.service";
 import { type ApprovalRead, type JournalRow, type TaskDetail } from "../../../services/agentApi.types";
-import { SAMPLE_APPROVALS_BY_TASK, SAMPLE_JOURNAL, sampleTaskDetailFor } from "../../../services/samples/sampleTasks.data";
-import { SAMPLE_SAVE_NOTICE } from "../../../services/samples/sampleMode.helper";
-import { SampleDataBanner, EmptyState, PageHeader, PropertyList, SectionTitle } from "../../../../shared/components/pageLayout.component";
+import { isServiceAuthError } from "../../../services/connection/serviceRequest.service";
+import { EmptyState, PageHeader, PropertyList, SectionTitle } from "../../../../shared/components/pageLayout.component";
 import { StatusTag, isFinishedStatus, hueForStatus } from "../../../../shared/components/statusTag.component";
 import { Tag } from "../../../../shared/components/tag.component";
 import { formatShortTimeAgo } from "../../../../shared/helpers/time.helper";
 import { copyTextAndNotify } from "../../../../shared/helpers/clipboard.helper";
 import { fileIconForPath } from "../../../../shared/helpers/fileIcon.helper";
 import { VerificationPanel } from "../verification/verificationPanel.component";
-import { joinCommandArgs } from "../verification/verificationState.helper";
 import { BackendTaskActivityPanel, type BackendTaskEvent } from "./backendTaskActivity.panel";
 import { BackendTaskChangesPanel } from "./backendTaskChanges.panel";
 import { BackendTaskOverviewPanel } from "./backendTaskOverview.panel";
@@ -56,14 +54,12 @@ export function BackendTaskDetailScreen() {
   const goToScreen = useAppStore((s) => s.goToScreen);
   const notify = useAppStore((s) => s.showNotice);
   const askForConfirmation = useAppStore((s) => s.askForConfirmation);
-  const openProject = useAppStore((s) => s.openProject);
   const [detail, setDetail] = useState<TaskDetail | null>(null);
   const [approvals, setApprovals] = useState<ApprovalRead[]>([]);
   const [journal, setJournal] = useState<JournalRow[]>([]);
   const [events, setEvents] = useState<BackendTaskEvent[]>([]);
-  const [demo, setDemo] = useState(false);
+  const [failure, setFailure] = useState<"none" | "offline" | "unauthorized">("none");
   const [tab, setTab] = useState<BackendTaskTab>("overview");
-  const demoRef = useRef(false);
 
   const loadTaskDetail = async (id: string) => {
     try {
@@ -73,40 +69,21 @@ export function BackendTaskDetailScreen() {
       setDetail(loadedDetail);
       setApprovals(loadedApprovals);
       setJournal(loadedJournal);
-      setDemo(false);
-      demoRef.current = false;
-    } catch {
-      if (demoRef.current) return;
-      const sampleDetail = sampleTaskDetailFor(id);
-      setDetail(sampleDetail);
-      setApprovals(SAMPLE_APPROVALS_BY_TASK[sampleDetail.task.id] ?? []);
-      setJournal(SAMPLE_JOURNAL[sampleDetail.task.id] ?? []);
-      const sampleEvents: BackendTaskEvent[] = [
-        ...sampleDetail.tool_calls.map((call) => ({ type: `tool.${call.tool}`, at: call.created_at, data: {} })),
-        ...(sampleDetail.verifications ?? []).flatMap((run) => [
-          { type: "verification.requirement.started", at: run.started_at, data: { command: joinCommandArgs(run.command) } },
-          ...(run.status === "running" ? [] : [{
-            type: "verification.requirement.completed", at: run.completed_at ?? run.started_at,
-            data: { command: joinCommandArgs(run.command), status: run.status, exit_code: run.exit_code, duration_ms: run.duration_ms },
-          }]),
-        ]),
-      ];
-      setEvents(sampleEvents.sort((a, b) => b.at.localeCompare(a.at)));
-      setDemo(true);
-      demoRef.current = true;
+      setFailure("none");
+    } catch (error) {
+      setFailure(isServiceAuthError(error) ? "unauthorized" : "offline");
     }
   };
 
   useEffect(() => {
     if (!taskId) return;
-    demoRef.current = false;
     void loadTaskDetail(taskId);
     const stopEvents = agentApi.events(taskId, (type, data) => {
       if (type === "snapshot") return;
       setEvents((list) => [{ type, at: new Date().toISOString(), data: (data ?? {}) as Record<string, unknown> }, ...list].slice(0, 60));
       void loadTaskDetail(taskId);
     });
-    const pollTimer = setInterval(() => { if (!demoRef.current) void loadTaskDetail(taskId); }, 4000);
+    const pollTimer = setInterval(() => { void loadTaskDetail(taskId); }, 4000);
     return () => {
       stopEvents();
       clearInterval(pollTimer);

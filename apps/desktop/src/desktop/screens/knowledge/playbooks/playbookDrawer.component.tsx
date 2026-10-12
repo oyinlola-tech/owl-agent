@@ -1,25 +1,28 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Copy, PaperPlaneTilt, Play, X } from "@phosphor-icons/react";
-import { PROJECTS } from "../../../services/samples/sampleWorkspace.data";
+import type { Project } from "../../../services/agentApi.types";
 import { Tag } from "../../../../shared/components/tag.component";
 import { fillPlaybookTemplate, type Playbook, type PlaybookField } from "./playbookCatalog.data";
 
 interface PlaybookDrawerProps {
   playbook: Playbook;
-  defaultProject: string;
+  projects: Project[];
+  defaultProjectId: string;
   onClose: () => void;
-  onRunInWorkspace: (prompt: string, project: string) => void;
-  onStartBackendTask: (prompt: string, project: string) => Promise<void>;
+  onRunInWorkspace: (prompt: string, project: Project | null) => void;
+  onStartBackendTask: (prompt: string, project: Project | null) => Promise<void>;
   onCopyPrompt: (prompt: string) => void;
 }
 
 export function PlaybookDrawer({
-  playbook, defaultProject, onClose, onRunInWorkspace, onStartBackendTask, onCopyPrompt,
+  playbook, projects, defaultProjectId, onClose, onRunInWorkspace, onStartBackendTask, onCopyPrompt,
 }: PlaybookDrawerProps) {
-  const [project, setProject] = useState(defaultProject);
+  const [projectId, setProjectId] = useState(defaultProjectId);
+  const selectedProject = projects.find((item) => item.id === projectId) ?? null;
+  const projectName = selectedProject?.name ?? "the project";
   const [fields, setFields] = useState<PlaybookField[]>(playbook.fields);
-  const filledPrompt = useMemo(() => fillPlaybookTemplate(playbook.template, project, fields), [playbook.template, project, fields]);
+  const filledPrompt = useMemo(() => fillPlaybookTemplate(playbook.template, projectName, fields), [playbook.template, projectName, fields]);
   const [prompt, setPrompt] = useState(filledPrompt);
   const [starting, setStarting] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -49,8 +52,9 @@ export function PlaybookDrawer({
           <div className="x-fields">
             <label className="x-field">
               <span className="label">Project</span>
-              <select className="input" value={project} onChange={(e) => setProject(e.target.value)}>
-                {PROJECTS.map((sampleProject) => <option key={sampleProject.name} value={sampleProject.name}>{sampleProject.name}</option>)}
+              <select className="input" value={projectId} onChange={(e) => setProjectId(e.target.value)} disabled={projects.length === 0}>
+                {projects.length === 0 && <option value="">No projects yet — add one first</option>}
+                {projects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
               </select>
             </label>
             {fields.map((field, fieldIndex) => (
@@ -82,10 +86,10 @@ export function PlaybookDrawer({
           <button className="btn btn-ghost" onClick={() => onCopyPrompt(prompt)}><Copy size={15} /> Copy prompt</button>
           <span className="grow" />
           <button className="btn btn-secondary" disabled={starting || !prompt.trim()}
-            onClick={() => { setStarting(true); void onStartBackendTask(prompt, project).finally(() => setStarting(false)); }}>
+            onClick={() => { setStarting(true); void onStartBackendTask(prompt, selectedProject).finally(() => setStarting(false)); }}>
             <PaperPlaneTilt size={15} /> {starting ? "Starting…" : "Start as backend task"}
           </button>
-          <button className="btn btn-primary" disabled={!prompt.trim()} onClick={() => onRunInWorkspace(prompt, project)}>
+          <button className="btn btn-primary" disabled={!prompt.trim()} onClick={() => onRunInWorkspace(prompt, selectedProject)}>
             <Play size={15} weight="fill" /> Run in workspace
           </button>
         </footer>
