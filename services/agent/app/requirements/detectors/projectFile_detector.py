@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import glob
 import os
 import re
 
@@ -16,6 +17,21 @@ def read_text_file_or_empty(path: str) -> str:
 
 def any_file_exists(workspace: str, *names: str) -> bool:
     return any(os.path.exists(os.path.join(workspace, n)) for n in names)
+
+
+def find_files_matching(workspace: str, *patterns: str) -> list[str]:
+    matches: list[str] = []
+    for pattern in patterns:
+        matches.extend(
+            os.path.relpath(p, workspace)
+            for p in glob.glob(os.path.join(workspace, pattern))
+            if os.path.isfile(p)
+        )
+    return sorted(set(matches))
+
+
+def any_glob_matches(workspace: str, *patterns: str) -> bool:
+    return bool(find_files_matching(workspace, *patterns))
 
 
 def assess_package_script_risk(body: str) -> tuple[bool, str]:

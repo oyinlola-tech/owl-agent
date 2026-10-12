@@ -5,13 +5,30 @@ from collections.abc import Callable
 from dataclasses import asdict
 from fnmatch import fnmatch
 
+from .detectors.blockchain.solidityFoundry_detector import detect_solidity_requirements
 from .detectors.buildToolchain_detector import (
     detect_go_requirements,
     detect_makefile_requirements,
     detect_rust_requirements,
 )
+from .detectors.dotnet.dotnetProject_detector import detect_dotnet_requirements
+from .detectors.functional.elixirMix_detector import detect_elixir_requirements
+from .detectors.functional.haskellBuild_detector import detect_haskell_requirements
+from .detectors.jvm.jvmBuild_detector import (
+    detect_maven_gradle_requirements,
+    detect_scala_sbt_requirements,
+)
+from .detectors.mobile.flutterDart_detector import detect_flutter_dart_requirements
+from .detectors.native.nativeBuild_detector import (
+    detect_cmake_requirements,
+    detect_swift_requirements,
+    detect_zig_requirements,
+)
 from .detectors.nodeScript_detector import detect_node_requirements
 from .detectors.pythonProject_detector import detect_python_requirements
+from .detectors.scripting.phpComposer_detector import detect_php_requirements
+from .detectors.scripting.rubyBundle_detector import detect_ruby_requirements
+from .detectors.scripting.shellBats_detector import detect_shell_requirements
 from .verificationRequirement_requirement import (
     REQUIREMENT_KIND_ORDER,
     DetectionResult,
@@ -23,6 +40,19 @@ LANGUAGE_DETECTORS: tuple[Callable[[str], list[VerificationRequirement]], ...] =
     detect_python_requirements,
     detect_go_requirements,
     detect_rust_requirements,
+    detect_maven_gradle_requirements,
+    detect_scala_sbt_requirements,
+    detect_cmake_requirements,
+    detect_swift_requirements,
+    detect_zig_requirements,
+    detect_dotnet_requirements,
+    detect_flutter_dart_requirements,
+    detect_elixir_requirements,
+    detect_haskell_requirements,
+    detect_php_requirements,
+    detect_ruby_requirements,
+    detect_shell_requirements,
+    detect_solidity_requirements,
 )
 FALLBACK_DETECTORS: tuple[Callable[[str], list[VerificationRequirement]], ...] = (
     detect_makefile_requirements,

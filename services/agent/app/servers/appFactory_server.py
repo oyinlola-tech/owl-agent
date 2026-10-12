@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -9,7 +8,6 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from ..databases.databaseConnection_database import get_database_folder, open_database
 from ..events.eventBus_event import EventBus
 from ..executors.browserExecutor_executor import BrowserPageInspector
 from ..executors.commandExecutor_executor import CommandExecutor
@@ -18,7 +16,7 @@ from ..guards.workspaceAccess_guard import WorkspaceAccessGuard
 from ..llms.modelRegistry_llm import ModelRegistry
 from ..llms.modelRouter_llm import ModelRouter
 from ..llms.providers.baseProvider_provider import ModelProvider
-from ..llms.providers.providerFactory_provider import build_provider_from_settings
+from ..llms.providerSetup_llm import create_provider_setup
 from ..llms.usageRecorder_llm import UsageRecorder
 from ..memories.sqliteMemoryStore_memory import SqliteMemoryStore
 from ..middlewares.bodyLimit_middleware import BodyLimitMiddleware
@@ -29,6 +27,8 @@ from ..sandboxes.sandboxRunner_sandbox import SandboxRunner
 from ..schemas.service_schema import ErrorBody
 from ..settings.serviceSettings_setting import Settings, load_settings_once
 from ..settings.serviceToken_setting import resolve_service_tokens
+from ..storages.logFile_storage import add_known_secret_to_log_filter
+from ..storages.storageBootstrap_storage import prepare_local_storage
 from ..tasks.taskManager_task import TaskManager
 from .routeRegistry_server import include_all_routers
 
@@ -38,9 +38,12 @@ log = logging.getLogger("owl")
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or load_settings_once()
     logging.basicConfig(level=settings.log_level.upper(), format="%(levelname)s owl %(message)s")
-    conn = open_database(settings.db_path or None)
-    data_dir = get_database_folder(conn)
+    storage = prepare_local_storage(settings.data_dir, settings.db_path)
+    conn = storage.conn
+    data_dir = storage.layout.root
     tokens = resolve_service_tokens(settings, data_dir)
+    for secret in tokens.list_accepted_tokens():
+        add_known_secret_to_log_filter(secret)
     sandbox = SandboxRunner(build_sandbox_policy(settings, data_dir), data_dir)
     sandbox.run_startup_self_test()
     log.info(
@@ -50,8 +53,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         sandbox.is_active,
     )
     bus = EventBus()
-    provider: ModelProvider = build_provider_from_settings(settings)
     registry = ModelRegistry(conn)
+    provider_setup = create_provider_setup(settings, conn, data_dir, registry)
+    provider: ModelProvider = provider_setup.holder
     memory = SqliteMemoryStore(conn, retention_history=settings.memory_retention)
     usage = UsageRecorder(conn)
     default_model = (
@@ -93,9 +97,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             sandbox=sandbox,
         ),
         browser=BrowserPageInspector(
-            os.path.join(data_dir, "shots"), allow_loopback=settings.browser_allow_loopback
+            storage.layout.screenshots_dir, allow_loopback=settings.browser_allow_loopback
         ),
     )
+    provider_setup.attach_routers([router, manager.router])
     policy = DefaultApprovalPolicy()
     recovered = manager.recover_interrupted_tasks()
     if recovered:
@@ -111,6 +116,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.router.lifespan_context = close_manager_on_shutdown
     app.state.manager = manager
     app.state.provider = provider
+    app.state.provider_setup = provider_setup
     app.state.policy = policy
     app.state.settings = settings
     app.state.registry = registry
@@ -120,7 +126,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.auth = manager.workspace_guard
     app.state.exec_service = manager.command_executor
     app.state.browser = manager.browser_inspector
-    app.state.shots_dir = os.path.join(data_dir, "shots")
+    app.state.shots_dir = storage.layout.screenshots_dir
+    app.state.local_storage = storage
     app.state.sandbox = sandbox
     app.state.service_tokens = tokens
 
@@ -132,7 +139,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_cors_origins,
-        allow_methods=["GET", "POST"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
         allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
         max_age=600,
     )

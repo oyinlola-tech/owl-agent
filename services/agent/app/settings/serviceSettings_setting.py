@@ -46,7 +46,13 @@ class Settings(BaseSettings):
         default=0.7,
         validation_alias=AliasChoices("NVIDIA_TEMPERATURE", "OWL_NVIDIA_TEMPERATURE"),
     )
+    provider: str = ""
+    secret_store: str = "auto"
+    anthropic_base_url: str = ""
+    provider_timeout: float = 120.0
+    provider_max_tokens: int = 4096
     db_path: str = ""
+    data_dir: str = ""
     router_default_model: str = ""
     router_fallback_model: str = ""
     router_allow_fallback: bool = True

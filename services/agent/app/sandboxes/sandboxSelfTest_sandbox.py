@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 from dataclasses import asdict, dataclass
 
-PROBE_SECRET = "owl-sandbox-probe-secret"
+PROBE_MARKER_TEXT = "owl-sandbox-probe-marker"
 PROBE_SCRIPT = (
     'if cat "$1" 2>/dev/null | grep -q owl-sandbox-probe; then echo READ_OUTSIDE=allowed;'
     " else echo READ_OUTSIDE=blocked; fi;"
@@ -49,17 +49,17 @@ def run_sandbox_self_test(prepare_launch, probe_folder: str) -> SelfTestResult:
         return SelfTestResult(ran=False, passed=False, detail="bash is needed for the self-test")
     os.makedirs(probe_folder, mode=0o700, exist_ok=True)
     workspace = tempfile.mkdtemp(prefix="owl-sandbox-selftest-")
-    secret_path = os.path.join(probe_folder, "sandbox-probe.txt")
+    probe_file_path = os.path.join(probe_folder, "sandbox-probe.txt")
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        with open(secret_path, "w", encoding="utf-8") as fh:
-            fh.write(PROBE_SECRET)
-        os.chmod(secret_path, 0o600)
+        with open(probe_file_path, "w", encoding="utf-8") as fh:
+            fh.write(PROBE_MARKER_TEXT)
+        os.chmod(probe_file_path, 0o600)
         listener.bind(("127.0.0.1", 0))
         listener.listen(4)
         port = listener.getsockname()[1]
         launch = prepare_launch(
-            [bash, "-c", PROBE_SCRIPT, "probe", secret_path, str(port)],
+            [bash, "-c", PROBE_SCRIPT, "probe", probe_file_path, str(port)],
             workspace,
             workspace,
             False,
@@ -95,6 +95,6 @@ def run_sandbox_self_test(prepare_launch, probe_folder: str) -> SelfTestResult:
         listener.close()
         shutil.rmtree(workspace, ignore_errors=True)
         try:
-            os.unlink(secret_path)
+            os.unlink(probe_file_path)
         except OSError:
             pass
