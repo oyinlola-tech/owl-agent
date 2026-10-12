@@ -9,7 +9,13 @@ from ...llms.modelRouter_llm import ModelRouter, RoutingError, classify_prompt
 from ...llms.providers.baseProvider_provider import ModelProvider
 from ...llms.providers.providerError_provider import ProviderError, ProviderNotConfiguredError
 from ...schemas.model_schema import ModelEntry, RouteRead, RouteRequest
-from .providerErrorResponse_route import build_error_response, build_provider_error_response
+from .providerErrorResponse_route import (
+    ROUTING_FAILURE_MESSAGE,
+    build_error_response,
+    build_provider_error_response,
+    describe_provider_error_for_user,
+    log_routing_failure,
+)
 
 
 def create_model_registry_router() -> APIRouter:
@@ -47,7 +53,11 @@ def create_model_registry_router() -> APIRouter:
             reg.save_model(model_id, status="unavailable")
             return JSONResponse(
                 status_code=200,
-                content={"id": model_id, "status": "unavailable", "error": str(exc)},
+                content={
+                    "id": model_id,
+                    "status": "unavailable",
+                    "error": describe_provider_error_for_user(exc)[1],
+                },
             )
         reg.save_model(model_id, status="verified", capabilities=["chat"])
         return {"id": model_id, "status": "verified"}
@@ -62,7 +72,8 @@ def create_model_registry_router() -> APIRouter:
                 payload.prompt, model=payload.model, estimated_tokens=estimated
             )
         except RoutingError as exc:
-            return build_error_response(503, str(exc), "no_usable_model")
+            log_routing_failure(exc)
+            return build_error_response(503, ROUTING_FAILURE_MESSAGE, "no_usable_model")
         return RouteRead(model=picked, reason=reason, category=classify_prompt(payload.prompt))
 
     return router

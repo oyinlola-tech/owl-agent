@@ -10,7 +10,10 @@ from ...llms.providers.providerError_provider import (
 )
 from ...schemas.service_schema import HealthRead, ProviderRead, VerifyRead
 from ...settings.serviceSettings_setting import Settings
-from .providerErrorResponse_route import build_provider_error_response
+from .providerErrorResponse_route import (
+    build_provider_error_response,
+    describe_provider_error_for_user,
+)
 
 
 def create_provider_status_router(provider: ModelProvider, settings: Settings) -> APIRouter:
@@ -43,15 +46,24 @@ def create_provider_status_router(provider: ModelProvider, settings: Settings) -
         model = str(desc.get("model", ""))
         if name == "mock":
             return VerifyRead(ok=True, provider=name, model=model)
+        if not desc.get("configured"):
+            return VerifyRead(
+                ok=False,
+                provider=name,
+                model=model,
+                error="Connect a model first.",
+                code="provider_not_configured",
+            )
         try:
             await active.list_models()
-        except RateLimitedError as exc:
-            return VerifyRead(
-                ok=False, provider=name, model=model, error=str(exc), code="rate_limited"
-            )
         except ProviderError as exc:
+            code, message = describe_provider_error_for_user(exc)
             return VerifyRead(
-                ok=False, provider=name, model=model, error=str(exc), code="unavailable"
+                ok=False,
+                provider=name,
+                model=model,
+                error=message,
+                code="rate_limited" if code == "rate_limited" else "unavailable",
             )
         return VerifyRead(ok=True, provider=name, model=model)
 

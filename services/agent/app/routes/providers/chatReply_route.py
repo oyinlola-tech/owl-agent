@@ -14,9 +14,17 @@ from ...llms.providers.providerError_provider import (
     ProviderNotConfiguredError,
     RateLimitedError,
 )
+from ...llms.providers.providerReadiness_provider import is_provider_ready
 from ...llms.usageRecorder_llm import UsageRecorder
 from ...schemas.model_schema import ChatReply, ChatRequest
-from .providerErrorResponse_route import build_provider_error_response
+from .providerErrorResponse_route import (
+    ROUTING_FAILURE_MESSAGE,
+    build_error_response,
+    build_provider_error_response,
+    build_provider_not_configured_response,
+    describe_provider_error_for_user,
+    log_routing_failure,
+)
 
 
 class RoutingFailedError(Exception):
@@ -82,12 +90,15 @@ def create_chat_router(app: FastAPI) -> APIRouter:
     @router.post("/chat", response_model=ChatReply)
     async def chat(payload: ChatRequest, request: Request):  # type: ignore[no-untyped-def]
         active: ModelProvider = request.app.state.provider
+        if not is_provider_ready(active):
+            return build_provider_not_configured_response()
         messages = [{"role": m.role.value, "content": m.content} for m in payload.messages]
         prompt_text = "\n".join(m["content"] for m in messages if m["role"] == "user")
         try:
             picked, reason = choose_model_for_prompt(payload.model, prompt_text)
         except RoutingFailedError as exc:
-            return build_provider_error_response(503, ProviderError(str(exc)))
+            log_routing_failure(exc)
+            return build_error_response(503, ROUTING_FAILURE_MESSAGE, "no_usable_model")
         start = time.monotonic()
         try:
             reply = await active.complete(messages, picked)
@@ -108,16 +119,18 @@ def create_chat_router(app: FastAPI) -> APIRouter:
     @router.post("/chat/stream")
     async def chat_stream(payload: ChatRequest, request: Request):  # type: ignore[no-untyped-def]
         active: ModelProvider = request.app.state.provider
+        if not is_provider_ready(active):
+            return build_provider_not_configured_response()
         messages = [{"role": m.role.value, "content": m.content} for m in payload.messages]
         prompt_text = "\n".join(m["content"] for m in messages if m["role"] == "user")
         try:
             picked, reason = choose_model_for_prompt(payload.model, prompt_text)
         except RoutingFailedError as exc:
-            message = str(exc)
+            log_routing_failure(exc)
 
             async def stream_routing_failure():  # type: ignore[no-untyped-def]
                 yield format_sse_event(
-                    "chat.error", {"code": "no_usable_model", "message": message}
+                    "chat.error", {"code": "no_usable_model", "message": ROUTING_FAILURE_MESSAGE}
                 )
 
             return StreamingResponse(stream_routing_failure(), media_type="text/event-stream")
@@ -138,14 +151,11 @@ def create_chat_router(app: FastAPI) -> APIRouter:
                     "chat.done",
                     {"text": "".join(chunks), "model": model, "routing": reason, "usage": usage},
                 )
-            except RateLimitedError as exc:
-                yield format_sse_event("chat.error", {"code": "rate_limited", "message": str(exc)})
-            except ProviderNotConfiguredError as exc:
-                yield format_sse_event(
-                    "chat.error", {"code": "not_configured", "message": str(exc)}
-                )
             except ProviderError as exc:
-                yield format_sse_event("chat.error", {"code": "unavailable", "message": str(exc)})
+                code, message = describe_provider_error_for_user(exc)
+                if code not in ("rate_limited", "not_configured"):
+                    code = "unavailable"
+                yield format_sse_event("chat.error", {"code": code, "message": message})
 
         return StreamingResponse(stream_chat_deltas(), media_type="text/event-stream")
 
