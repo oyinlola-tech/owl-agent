@@ -53,7 +53,15 @@ export function OnboardingScreen() {
   const finishSetup = () => {
     recordProgress(true);
     store.finish();
-    if (store.projectName.trim()) setDraft("Give me a short tour of this project and suggest a good first task.");
+    const folder = store.projectName.trim();
+    if (folder) {
+      setDraft("Give me a short tour of this project and suggest a good first task.");
+      void agentApi.createProject(folder)
+        .then((result) => { useAppStore.getState().openProject(result.project); })
+        .catch(() => { goToScreen("welcome"); notify("Couldn't open that folder — add a project from the workspace."); });
+      notify("Setup complete. Welcome to OWL.");
+      return;
+    }
     goToScreen("welcome");
     notify("Setup complete. Welcome to OWL.");
   };
