@@ -3,8 +3,9 @@ from __future__ import annotations
 from fastapi import APIRouter, FastAPI
 from fastapi.responses import JSONResponse
 
+from ..memories.memorySuggestion_memory import list_memory_suggestions
 from ..memories.sqliteMemoryStore_memory import SqliteMemoryStore
-from ..schemas.memory_schema import MemoryCreate, MemoryUpdate
+from ..schemas.memory_schema import MemoryConfirm, MemoryCreate, MemoryUpdate
 from .providers.providerErrorResponse_route import build_error_response
 
 
@@ -41,6 +42,18 @@ def create_memory_router(app: FastAPI) -> APIRouter:
         return current_memory_store().search_memories(
             q[:200], project=project, limit=min(max(limit, 1), 50)
         )
+
+    @router.get("/memory/suggestions")
+    async def memory_suggestions():  # type: ignore[no-untyped-def]
+        return list_memory_suggestions(current_memory_store().conn)
+
+    @router.post("/memory/{memory_id}/confirm")
+    async def confirm_memory(memory_id: str, payload: MemoryConfirm | None = None):  # type: ignore[no-untyped-def]
+        text = payload.text if payload else None
+        row = current_memory_store().confirm_memory(memory_id, text)
+        if row is None:
+            return build_error_response(404, "memory not found", "not_found")
+        return row
 
     @router.patch("/memory/{memory_id}")
     async def update_memory(memory_id: str, payload: MemoryUpdate):  # type: ignore[no-untyped-def]

@@ -35,6 +35,7 @@ def create_task_detail_router(manager: TaskManager) -> APIRouter:
             "usage": manager.list_task_usage(task_id),
             "verifications": manager.list_verification_runs(task_id),
             "verification": manager.summarize_verification(task_id),
+            "memories_used": manager.list_task_memory_uses(task_id),
         }
 
     @router.get("/tasks/{task_id}/tool-calls")

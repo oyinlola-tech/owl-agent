@@ -3,9 +3,13 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from ...llms.modelRouter_llm import RoutingError
+from ...llms.providers.providerReadiness_provider import is_provider_ready
 from ...schemas.task_schema import MessageCreate, TaskCreate
 from ...tasks.taskManager_task import TaskManager
-from ..providers.providerErrorResponse_route import build_error_response
+from ..providers.providerErrorResponse_route import (
+    build_error_response,
+    build_provider_not_configured_response,
+)
 
 
 def create_task_lifecycle_router(manager: TaskManager) -> APIRouter:
@@ -13,6 +17,8 @@ def create_task_lifecycle_router(manager: TaskManager) -> APIRouter:
 
     @router.post("/tasks", status_code=201)
     async def create_task(payload: TaskCreate):  # type: ignore[no-untyped-def]
+        if not is_provider_ready(manager.provider):
+            return build_provider_not_configured_response()
         try:
             return await manager.create_task_and_start(payload, model=payload.model)
         except RoutingError as exc:
