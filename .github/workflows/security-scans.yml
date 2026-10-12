@@ -41,10 +41,10 @@ jobs:
       - name: Install Bandit
         run: python -m pip install "bandit==${BANDIT_VERSION}"
       - name: Report every finding
-        run: bandit -r services/agent/app -c security/scanners/banditConfig.scan.yaml --exit-zero
+        run: bandit -r services/agent/app -c security/scanners/banditConfig.scanner.yaml --exit-zero
       - name: Fail on high severity
         run: >-
-          bandit -r services/agent/app -c security/scanners/banditConfig.scan.yaml
+          bandit -r services/agent/app -c security/scanners/banditConfig.scanner.yaml
           --severity-level high --confidence-level medium
 
   semgrep:
@@ -66,7 +66,7 @@ jobs:
         run: >-
           semgrep scan --metrics off --error --severity ERROR
           --config p/python --config p/typescript --config p/react --config p/secrets
-          --config security/scanners/owlRules.semgrep.yml
+          --config security/scanners/owlRules.scanner.yml
           --exclude node_modules --exclude target --exclude .venv --exclude dist
           services apps/desktop/src apps/desktop/src-tauri/src scripts
 
@@ -142,9 +142,9 @@ jobs:
           echo "${GITLEAKS_SHA256}  /tmp/${archive}" | sha256sum --check
           tar -xzf "/tmp/${archive}" -C /tmp gitleaks
       - name: Scan git history
-        run: /tmp/gitleaks git --redact --config security/scanners/gitleaksConfig.scan.toml .
+        run: /tmp/gitleaks git --redact --config security/scanners/gitleaksConfig.scanner.toml .
       - name: Scan the checked-out tree
-        run: /tmp/gitleaks dir --redact --config security/scanners/gitleaksConfig.scan.toml .
+        run: /tmp/gitleaks dir --redact --config security/scanners/gitleaksConfig.scanner.toml .
 
   trivy:
     name: Trivy filesystem scan

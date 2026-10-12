@@ -5,6 +5,7 @@ import { Tag } from "../../../../../shared/components/tag.component";
 import { copyTextAndNotify } from "../../../../../shared/helpers/clipboard.helper";
 import { SettingToggleRow, SettingValueRow } from "../settingRow.component";
 import type { SettingsPrefs } from "../settingsPrefs.helper";
+import { SecurityStatusSection } from "./securityStatus.section";
 
 const PROTECTED_PATHS = [".env and .env.*", "~/.ssh", "~/.gnupg", "id_rsa, id_ed25519, id_dsa", "*.pem, *.key, *.p12, *.pfx, *.kdbx", "Browser cookie and login stores"];
 
@@ -61,6 +62,7 @@ export function WorkspaceSettingsSection({ roots, rootsDemo, onRetry }: { roots:
 export function SecuritySettingsSection() {
   return (
     <>
+      <SecurityStatusSection />
       <div className="surface pg-setgroup">
         <h4>Never read or sent</h4>
         <div className="pg-chips">{PROTECTED_PATHS.map((path) => <Tag key={path} hue="red" icon={LockKey}>{path}</Tag>)}</div>
