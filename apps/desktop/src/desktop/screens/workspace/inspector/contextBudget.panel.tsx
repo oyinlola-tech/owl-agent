@@ -43,13 +43,7 @@ export function ContextBudgetPanel() {
   if (!report) {
     return (
       <div className="ctx">
-        <div className="ctx-stats">
-          <div><b>8</b><span>Files</span></div>
-          <div><b>1,843</b><span>Lines</span></div>
-          <div><b>{chat.length}</b><span>Messages</span></div>
-          <div><b>14</b><span>Tools</span></div>
-        </div>
-        <div className="callout"><Info size={15} /> Token budget needs the Python service. Start it to see live usage.</div>
+        <div className="callout"><Info size={15} /> The token budget needs the local OWL service. Start it to see live context usage.</div>
       </div>
     );
   }

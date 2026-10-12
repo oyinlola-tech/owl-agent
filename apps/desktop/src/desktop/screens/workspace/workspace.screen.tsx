@@ -23,7 +23,7 @@ export function WorkspaceScreen() {
   const project = useAppStore((s) => s.project);
   const centerTab = useAppStore((s) => s.centerTab);
   const setCenterTab = useAppStore((s) => s.setCenterTab);
-  const openProject = useAppStore((s) => s.openProject);
+  const goToScreen = useAppStore((s) => s.goToScreen);
   const setCreateProjectOpen = useAppStore((s) => s.setCreateProjectOpen);
   const toggleTerminal = useAppStore((s) => s.toggleTerminal);
   const terminalOpen = useAppStore((s) => s.terminalOpen);
@@ -39,9 +39,9 @@ export function WorkspaceScreen() {
       <div className="page">
         <EmptyState icon={FolderOpen} hue="blue" title="No project open"
           body="Open a project to give OWL a folder to work in. It can only read and write inside that folder.">
-          <button className="btn btn-primary" onClick={() => setCreateProjectOpen(true)}>Create project</button>
-          <button className="btn btn-secondary" onClick={() => openProject({ name: "ZudoMart", path: "~/Projects/zudomart", opened: "now" })}>
-            <FolderOpen size={14} /> Open ZudoMart
+          <button className="btn btn-primary" onClick={() => setCreateProjectOpen(true)}>Add a project</button>
+          <button className="btn btn-secondary" onClick={() => goToScreen("projects")}>
+            <FolderOpen size={14} /> Browse projects
           </button>
         </EmptyState>
       </div>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Info, Lightning, PaperPlaneRight, Pause, Play, Stack, Stop } from "@phosphor-icons/react";
+import { Check, Info, PaperPlaneRight, Pause, Play, Plugs, Stack, Stop } from "@phosphor-icons/react";
 import { useAppStore } from "../../../state/app.store";
 import { agentApi } from "../../../services/agentApi.service";
 import { OwlMark } from "../../../../shared/components/owlMark.component";
@@ -17,11 +17,7 @@ export function ChatPanel() {
   const chat = useAppStore((s) => s.chat);
   const draft = useAppStore((s) => s.draft);
   const setDraft = useAppStore((s) => s.setDraft);
-  const sendDraftToSampleAgent = useAppStore((s) => s.sendDraftToSampleAgent);
-  const sendDraftToLiveModel = useAppStore((s) => s.sendDraftToLiveModel);
-  const liveChatEnabled = useAppStore((s) => s.liveChatEnabled);
-  const liveReplyInProgress = useAppStore((s) => s.liveReplyInProgress);
-  const runSampleTask = useAppStore((s) => s.runSampleTask);
+  const sendWorkspaceMessage = useAppStore((s) => s.sendWorkspaceMessage);
   const agentStatus = useAppStore((s) => s.agentStatus);
   const pauseAgent = useAppStore((s) => s.pauseAgent);
   const resumeAgent = useAppStore((s) => s.resumeAgent);
@@ -30,32 +26,28 @@ export function ChatPanel() {
   const preferredModel = useAppStore((s) => s.preferredModel);
   const setPreferredModel = useAppStore((s) => s.setPreferredModel);
   const project = useAppStore((s) => s.project);
-  const stopLiveReply = useAppStore((s) => s.stopLiveReply);
+  const needsProvider = useAppStore((s) => s.needsProvider);
+  const goToScreen = useAppStore((s) => s.goToScreen);
   const [models, setModels] = useState<{ id: string; status: string }[]>([]);
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let alive = true;
-    agentApi
-      .registry()
-      .then((registry) => {
-        if (alive) setModels(registry.models.map((model) => ({ id: model.id, status: model.status })));
-      })
+    agentApi.registry()
+      .then((registry) => { if (alive) setModels(registry.models.map((model) => ({ id: model.id, status: model.status }))); })
       .catch(() => {});
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, []);
   useEffect(() => {
     endOfMessagesRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [chat.length]);
   const confirmStopTask = () => askForConfirmation({
     title: "Stop the running task?",
-    body: "The agent halts immediately. Progress so far is kept and can be resumed from history.",
+    body: "The agent halts immediately. Progress so far is kept and the task stays in your history.",
     confirmLabel: "Stop task",
     run: stopAgent,
   });
-  const submitDraft = () => (liveChatEnabled ? sendDraftToLiveModel : sendDraftToSampleAgent)();
-  const agentStateLabel = agentStatus === "working" ? "Analyzing project" : agentStatus === "paused" ? "Paused" : agentStatus === "awaiting" ? "Waiting for your approval" : agentStatus === "done" ? "Done" : agentStatus === "stopped" ? "Stopped" : "Idle";
+  const working = agentStatus === "working" || agentStatus === "awaiting";
+  const agentStateLabel = agentStatus === "working" ? "Working" : agentStatus === "paused" ? "Paused" : agentStatus === "awaiting" ? "Waiting for your approval" : agentStatus === "done" ? "Done" : agentStatus === "stopped" ? "Stopped" : "Ready";
   const agentStateHue: Hue = agentStatus === "working" ? "blue" : agentStatus === "awaiting" ? "orange" : agentStatus === "done" ? "green" : "gray";
   const isModelUsable = (model: { status: string }) => model.status === "available" || model.status === "verified";
   return (
@@ -63,7 +55,7 @@ export function ChatPanel() {
       <div className="chatbar">
         <span className="chatbar-status">
           <Tag hue={agentStateHue} dot>{agentStateLabel}</Tag>
-          <span className="chatbar-meta">{liveChatEnabled ? "Live model" : "Sample replay"} · {project?.name ?? "ZudoMart"}</span>
+          <span className="chatbar-meta">{project?.name ?? "No project"}</span>
         </span>
         <select
           className="input modelsel"
@@ -73,16 +65,10 @@ export function ChatPanel() {
           title={preferredModel === "auto" ? "Auto: the router picks a model per task" : `Pinned to ${preferredModel}`}
         >
           <option value="auto">Auto routing</option>
-          {models
-            .filter((model) => isModelUsable(model))
-            .map((model) => (
-              <option key={model.id} value={model.id}>{model.id}</option>
-            ))}
-          {models
-            .filter((model) => !isModelUsable(model))
-            .map((model) => (
-              <option key={model.id} value={model.id} disabled>{model.id} ({model.status})</option>
-            ))}
+          {models.filter(isModelUsable).map((model) => <option key={model.id} value={model.id}>{model.id}</option>)}
+          {models.filter((model) => !isModelUsable(model)).map((model) => (
+            <option key={model.id} value={model.id} disabled>{model.id} ({model.status})</option>
+          ))}
         </select>
       </div>
 
@@ -95,16 +81,13 @@ export function ChatPanel() {
               <div className="msg-text">{message.text}</div>
               {message.plan && (
                 <ol className="todo">
-                  {message.plan.map((step, index) => {
-                    const done = agentStatus === "done";
-                    return (
-                      <li key={step} className={done ? "done" : ""}>
-                        <span className="todo-box">{done && <Check size={11} weight="bold" />}</span>
-                        <span className="todo-n">{index + 1}</span>
-                        <span>{step}</span>
-                      </li>
-                    );
-                  })}
+                  {message.plan.map((step, index) => (
+                    <li key={step}>
+                      <span className="todo-box"><Check size={11} weight="bold" /></span>
+                      <span className="todo-n">{index + 1}</span>
+                      <span>{step}</span>
+                    </li>
+                  ))}
                 </ol>
               )}
               {message.meta && <div className="msg-meta">{message.meta}</div>}
@@ -115,35 +98,36 @@ export function ChatPanel() {
       </div>
 
       <div className="chat-dock">
+        {needsProvider && (
+          <div className="callout blue" role="status" style={{ marginBottom: 8 }}>
+            <Plugs size={18} weight="duotone" color="var(--blue)" />
+            <span>Connect a model before OWL can work on a task.</span>
+            <span className="grow" />
+            <button className="btn btn-primary btn-sm" onClick={() => goToScreen("settings")}>Connect a model</button>
+          </div>
+        )}
         <div className="agent-ctl">
-          {(agentStatus === "working" || agentStatus === "awaiting") && (
-            <button className="btn btn-secondary btn-sm" onClick={pauseAgent}><Pause size={13} weight="fill" /> Pause</button>
-          )}
-          {agentStatus === "paused" && (
-            <button className="btn btn-secondary btn-sm" onClick={resumeAgent}><Play size={13} weight="fill" /> Resume</button>
-          )}
-          {(agentStatus === "working" || agentStatus === "paused" || agentStatus === "awaiting") && (
+          {working && <button className="btn btn-secondary btn-sm" onClick={pauseAgent}><Pause size={13} weight="fill" /> Pause</button>}
+          {agentStatus === "paused" && <button className="btn btn-secondary btn-sm" onClick={resumeAgent}><Play size={13} weight="fill" /> Resume</button>}
+          {(working || agentStatus === "paused") && (
             <button className="btn btn-secondary btn-sm" onClick={confirmStopTask}><Stop size={13} weight="fill" style={{ color: "var(--red)" }} /> Stop</button>
-          )}
-          {(agentStatus === "idle" || agentStatus === "done" || agentStatus === "stopped") && (
-            <button className="btn btn-secondary btn-sm" onClick={runSampleTask}><Lightning size={13} weight="fill" style={{ color: "var(--yellow)" }} /> Run sample task</button>
           )}
         </div>
         <div className="composer">
           <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ask OWL to build, fix, or explain…"
             aria-label="Message OWL"
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitDraft(); } }} />
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendWorkspaceMessage(); } }} />
           <div className="composer-row">
             <ChatContextPicker />
             <span className="ctx-chip"><Stack size={13} /> {preferredModel === "auto" ? "Auto model" : preferredModel.split("/").pop()}</span>
             <span className="grow" />
             <span className="composer-hint"><kbd>Enter</kbd> to send</span>
-            {liveChatEnabled && liveReplyInProgress ? (
-              <button className="btn btn-secondary btn-sm" onClick={stopLiveReply} aria-label="Stop generating">
+            {working ? (
+              <button className="btn btn-secondary btn-sm" onClick={confirmStopTask} aria-label="Stop task">
                 <Stop size={13} weight="fill" style={{ color: "var(--red)" }} /> Stop
               </button>
             ) : (
-              <button className="btn btn-primary btn-sm send" disabled={!draft.trim()} onClick={submitDraft} aria-label="Send message">
+              <button className="btn btn-primary btn-sm send" disabled={!draft.trim() || !project} onClick={sendWorkspaceMessage} aria-label="Send message">
                 <PaperPlaneRight size={14} weight="fill" /> Send
               </button>
             )}

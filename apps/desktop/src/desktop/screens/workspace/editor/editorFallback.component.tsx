@@ -1,5 +1,4 @@
 import { Component, useEffect, useState, type ReactNode } from "react";
-import { contentFor } from "../../../services/samples/sampleWorkspace.data";
 import { readAppliedTheme } from "../../../../shared/hooks/themeMode.hook";
 
 export function useIsDarkThemeApplied(): boolean {
@@ -21,8 +20,7 @@ export class EditorErrorBoundary extends Component<{ children: ReactNode; fallba
   }
 }
 
-export function ReadOnlySourcePreview({ path }: { path: string }) {
-  const { code } = contentFor(path);
+export function ReadOnlySourcePreview({ code }: { code: string }) {
   return (
     <pre className="fallback-code" aria-label="Source preview">
       {code.split("\n").map((line, index) => (
