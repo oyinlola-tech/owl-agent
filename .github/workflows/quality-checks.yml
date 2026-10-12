@@ -1,0 +1,136 @@
+name: Quality checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.14"
+  NODE_VERSION: "24"
+
+jobs:
+  backend:
+    name: Backend tests and lint
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: services/agent
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install service with dev tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Ruff lint
+        run: python -m ruff check app tests scripts
+      - name: Ruff format check
+        run: python -m ruff format --check app tests scripts
+      - name: Pytest
+        run: python -m pytest tests -q -p no:cacheprovider
+
+  frontend:
+    name: Frontend typecheck, unit tests, build
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/desktop
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  ui-qa:
+    name: Playwright UI QA
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Create the service venv used by the service-online smoke test
+        working-directory: services/agent
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -e .
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+      - name: Install dependencies and Playwright Chromium
+        working-directory: apps/desktop
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Run QA suite
+        working-directory: apps/desktop
+        run: npm run qa
+      - name: Upload QA report
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-qa-report
+          path: apps/desktop/node_modules/.cache/owl-qa
+          include-hidden-files: true
+          retention-days: 7
+
+  service-binary:
+    name: Service sidecar smoke test (Linux)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Build the sidecar with PyInstaller
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e services/agent "pyinstaller==6.16.0"
+          python services/agent/packaging/buildServiceBinary_packaging.py --target x86_64-unknown-linux-gnu
+      - name: Start the binary and check /health
+        run: |
+          binary=apps/desktop/src-tauri/binaries/owl-service-x86_64-unknown-linux-gnu
+          data_dir="$(mktemp -d)"
+          "$binary" --port 8765 --data-dir "$data_dir" &
+          pid=$!
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8765/health; then break; fi
+            sleep 0.5
+          done
+          curl -fsS http://127.0.0.1:8765/health
+          kill "$pid"
+
+  installers:
+    name: Install script lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - name: ShellCheck owl.install.sh
+        run: shellcheck -s sh scripts/install/owl.install.sh
+      - name: PSScriptAnalyzer owl.install.ps1
+        shell: pwsh
+        run: |
+          Install-Module PSScriptAnalyzer -RequiredVersion 1.24.0 -Scope CurrentUser -Force
+          $findings = Invoke-ScriptAnalyzer -Path scripts/install/owl.install.ps1 -Severity Warning,Error
+          $findings | Format-Table -AutoSize
+          if ($findings) { exit 1 }

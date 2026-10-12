@@ -1,0 +1,153 @@
+name: Desktop release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to create or update (for example v0.1.0)"
+        required: true
+        default: "v0.1.0"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: "3.14"
+  NODE_VERSION: "24"
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+jobs:
+  create-release:
+    name: Create or reuse the draft release
+    runs-on: ubuntu-24.04
+    outputs:
+      release_id: ${{ steps.release.outputs.release_id }}
+    steps:
+      - id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          release_id=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases" \
+            --jq ".[] | select(.tag_name == \"${RELEASE_TAG}\") | .id" | head -n 1)
+          if [ -z "$release_id" ]; then
+            release_id=$(gh api -X POST "repos/${GITHUB_REPOSITORY}/releases" \
+              -f tag_name="${RELEASE_TAG}" \
+              -f target_commitish="${GITHUB_SHA}" \
+              -f name="OWL ${RELEASE_TAG}" \
+              -f body="Installers for Windows, macOS and Linux. See docs/INSTALL.md. These builds are NOT code-signed or notarized yet. Verify downloads with SHA256SUMS.txt." \
+              -F draft=true \
+              --jq .id)
+          fi
+          echo "release_id=${release_id}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.name }}
+    needs: create-release
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            runner: windows-latest
+            bundles: msi,nsis
+          - name: macOS Apple silicon
+            runner: macos-latest
+            bundles: app,dmg
+          - name: macOS Intel
+            runner: macos-15-intel
+            bundles: app,dmg
+          - name: Linux x64
+            runner: ubuntu-22.04
+            bundles: deb,appimage,rpm
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - name: Install Linux build libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Build the OWL service sidecar
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e services/agent "pyinstaller==6.16.0"
+          python services/agent/packaging/buildServiceBinary_packaging.py
+          ls -l apps/desktop/src-tauri/binaries
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: apps/desktop
+        run: npm ci
+
+      - name: Build installers and attach them to a draft release
+        id: tauri
+        uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # action-v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: apps/desktop
+          tauriScript: npx tauri
+          args: --bundles ${{ matrix.bundles }}
+          releaseId: ${{ needs.create-release.outputs.release_id }}
+
+  checksums:
+    name: Publish SHA256SUMS.txt
+    needs: [create-release, build]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Download every release asset and hash it
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.create-release.outputs.release_id }}
+        run: |
+          set -euo pipefail
+          test -n "$RELEASE_ID" || { echo "No release id"; exit 1; }
+          mkdir assets
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets" \
+            --jq '.[] | select(.name != "SHA256SUMS.txt") | [.id, .name] | @tsv' > asset-list.tsv
+          while IFS=$'\t' read -r asset_id asset_name; do
+            gh api -H "Accept: application/octet-stream" \
+              "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" > "assets/${asset_name}"
+          done < asset-list.tsv
+          (cd assets && sha256sum -- * > ../SHA256SUMS.txt)
+          cat SHA256SUMS.txt
+      - name: Upload SHA256SUMS.txt to the same release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.create-release.outputs.release_id }}
+        run: |
+          set -euo pipefail
+          old_id=$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets" --paginate \
+            --jq '.[] | select(.name == "SHA256SUMS.txt") | .id')
+          if [ -n "$old_id" ]; then
+            gh api -X DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${old_id}"
+          fi
+          curl -fsSL -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Content-Type: text/plain" \
+            --data-binary @SHA256SUMS.txt \
+            "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=SHA256SUMS.txt"
