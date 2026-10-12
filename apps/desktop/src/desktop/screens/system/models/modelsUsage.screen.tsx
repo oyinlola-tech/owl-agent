@@ -6,10 +6,7 @@ import {
 import { useAppStore } from "../../../state/app.store";
 import { agentApi } from "../../../services/agentApi.service";
 import { type BackendTask, type ModelEntry, type RouteRead, type UsageRow } from "../../../services/agentApi.types";
-import { SAMPLE_MODELS } from "../../../services/samples/sampleCatalog.data";
-import { SAMPLE_BACKEND_TASKS, SAMPLE_USAGE } from "../../../services/samples/sampleTasks.data";
-import { loadWithSampleFallback, SAMPLE_SAVE_NOTICE_SHORT } from "../../../services/samples/sampleMode.helper";
-import { SampleDataBanner, EmptyState, PageHeader, SectionTitle } from "../../../../shared/components/pageLayout.component";
+import { EmptyState, PageHeader, SectionTitle } from "../../../../shared/components/pageLayout.component";
 import { Tag, type Hue } from "../../../../shared/components/tag.component";
 import "./modelsUsage.style.css";
 import { StatCard } from "../../../components/statCard.component";
@@ -39,7 +36,6 @@ export function ModelsUsageScreen() {
   const [models, setModels] = useState<ModelEntry[]>([]);
   const [usage, setUsage] = useState<UsageRow[]>([]);
   const [tasksById, setTasksById] = useState<Record<string, BackendTask>>({});
-  const [isSampleData, setIsSampleData] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [validationById, setValidationById] = useState<Record<string, { busy?: boolean; status?: string; error?: string }>>({});
@@ -49,15 +45,14 @@ export function ModelsUsageScreen() {
 
   const loadModelsAndUsage = useCallback(async () => {
     setLoading(true);
-    const [registryResult, usageResult, taskResult] = await Promise.all([
-      loadWithSampleFallback(agentApi.registry(), { models: SAMPLE_MODELS }),
-      loadWithSampleFallback(agentApi.usage(), SAMPLE_USAGE),
-      loadWithSampleFallback(agentApi.backendTasks(), SAMPLE_BACKEND_TASKS),
+    const [registry, usageRows, tasks] = await Promise.all([
+      agentApi.registry().then((r) => r.models).catch(() => [] as ModelEntry[]),
+      agentApi.usage().catch(() => [] as UsageRow[]),
+      agentApi.backendTasks().catch(() => [] as BackendTask[]),
     ]);
-    setTasksById(Object.fromEntries(taskResult.data.map((task) => [task.id, task])));
-    setModels(registryResult.data.models);
-    setUsage(usageResult.data);
-    setIsSampleData(registryResult.demo || usageResult.demo);
+    setTasksById(Object.fromEntries(tasks.map((task) => [task.id, task])));
+    setModels(registry);
+    setUsage(usageRows);
     setLoading(false);
   }, []);
   useEffect(() => { void loadModelsAndUsage(); }, [loadModelsAndUsage]);
@@ -80,7 +75,6 @@ export function ModelsUsageScreen() {
   const maxTaskTokens = Math.max(1, ...tokensByTask.map((taskTotals) => taskTotals.input + taskTotals.output));
 
   const refreshRegistry = async () => {
-    if (isSampleData) { showNotice(SAMPLE_SAVE_NOTICE_SHORT); return; }
     setRefreshing(true);
     try {
       const result = await agentApi.refreshRegistry();

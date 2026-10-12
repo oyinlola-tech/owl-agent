@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { openApp, SIDEBAR_SCREENS, sidebar, statusBar } from "../support/appScreen.support";
 
-test("app starts in sample-data mode when the service is offline", async ({ page }) => {
+test("app shows the service as offline when the service is unreachable, never fake data", async ({ page }) => {
   await openApp(page);
   await expect(statusBar(page).getByRole("button", { name: "Service offline" })).toBeVisible();
 });
