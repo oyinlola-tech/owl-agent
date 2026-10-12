@@ -1,0 +1,30 @@
+.owl-mark { flex: none; }
+.owl-mark .owl-pupil { transition: transform 300ms var(--ease); }
+
+.ph { display: grid; gap: 14px; margin: 0 0 28px; }
+.ph-row { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.ph-text { flex: 1 1 320px; min-width: 0; }
+.ph-eyebrow { font-size: 12.5px; font-weight: 500; color: var(--ink-3); margin-bottom: 4px; display: flex; gap: 6px; align-items: center; }
+.ph h1 { margin: 0; font-family: var(--serif); font-size: 38px; font-weight: 560; letter-spacing: -0.02em; line-height: 1.1;
+  font-variation-settings: "opsz" 60; }
+.ph p { margin: 6px 0 0; font-size: 15px; color: var(--ink-3); max-width: 64ch; }
+.ph-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.props { margin: 0; display: grid; gap: 2px; }
+.prop { display: grid; grid-template-columns: 160px minmax(0, 1fr); align-items: center; min-height: 34px; }
+.prop dt { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-3); }
+.prop dt svg { color: var(--ink-4); }
+.prop dd { margin: 0; font-size: 14px; color: var(--ink-2); padding: 4px 8px; border-radius: var(--r-sm); min-width: 0; }
+.prop dd:hover { background: var(--bg-hover); }
+@media (max-width: 560px) { .prop { grid-template-columns: 120px minmax(0, 1fr); } }
+
+.sect { display: flex; align-items: center; gap: 12px; margin: 32px 0 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.sect h3 { margin: 0; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; flex: 1; letter-spacing: -0.01em; }
+.sect-count { font-size: 12px; font-weight: 500; color: var(--ink-4); }
+.sect-actions { display: flex; gap: 6px; }
+
+.demo-banner { display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 12px; margin: 0 0 16px;
+  border-radius: var(--r-md); background: var(--yellow-bg); color: var(--ink-2); font-size: 13px; line-height: 1.4; }
+.demo-banner > span:nth-child(2) { flex: 1; min-width: 0; }
+.demo-banner b { font-weight: 600; color: var(--ink); }
+.demo-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--yellow); flex: none; }
