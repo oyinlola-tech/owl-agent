@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowClockwise, ArrowLeft, ArrowRight, Browser, Camera, CheckCircle, Code, Copy, Cursor, DeviceMobile, DeviceTablet,
   Globe, Info, Laptop, LockKey, MagicWand, Monitor, PaperPlaneRight, SpinnerGap, Square, Terminal, TextAa, WifiHigh, XCircle, type Icon,
@@ -35,8 +35,9 @@ export function BrowserStudioScreen() {
   const goToScreen = useAppStore((s) => s.goToScreen);
   const openProject = useAppStore((s) => s.openProject);
   const project = useAppStore((s) => s.project);
-  const [capture, setCapture] = useState<{ title: string; text: string; screenshot?: string } | null>(null);
+  const [capture, setCapture] = useState<{ title: string; text: string; screenshot?: string; screenshotUrl?: string } | null>(null);
   const [capturing, setCapturing] = useState(false);
+  useEffect(() => () => { if (capture?.screenshotUrl) URL.revokeObjectURL(capture.screenshotUrl); }, [capture]);
   const [captureHistory, setCaptureHistory] = useState<PageCapture[]>([]);
   const [backStack, setBackStack] = useState<string[]>([]);
   const [forwardStack, setForwardStack] = useState<string[]>([]);
@@ -46,7 +47,8 @@ export function BrowserStudioScreen() {
     setCapturing(true);
     try {
       const result = await agentApi.browserCapture(url, width, withScreenshot);
-      setCapture(result);
+      const screenshotUrl = result.screenshot ? await agentApi.loadScreenshotObjectUrl(result.screenshot).catch(() => undefined) : undefined;
+      setCapture({ ...result, screenshotUrl });
       setCaptureHistory((list) => [{ url, w: width, title: result.title || url, at: new Date().toISOString(), ok: true, screenshot: result.screenshot }, ...list].slice(0, 8));
     } catch {
       notify("The OWL service is offline, so pages can't be captured. Showing a wireframe instead.");
@@ -119,8 +121,8 @@ export function BrowserStudioScreen() {
         <div className="pg-stage">
           <div className="pg-frame" style={{ maxWidth: `${frameMaxPercent}%` }}>
             <div className="pg-frame-meta"><span><device.icon size={12} /> {device.label} · {capture?.title || url.replace(/^https?:\/\//, "")}</span><span>{width} × {Math.round(width * (width >= 1024 ? 0.625 : width >= 768 ? 1.33 : 2.16))}</span></div>
-            {capture?.screenshot ? (
-              <img src={agentApi.shotUrl(capture.screenshot)} alt={`Screenshot of ${capture.title}`} />
+            {capture?.screenshotUrl ? (
+              <img src={capture.screenshotUrl} alt={`Screenshot of ${capture.title}`} />
             ) : (
               <div className="pg-wire" aria-label={`Wireframe preview of ${url} at ${width}px`} role="img">
                 <div className="nav"><span className="logo" /><span className="bar" style={{ width: 60 }} /><span className="grow" />
