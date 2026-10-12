@@ -127,7 +127,29 @@ describe("formatting", () => {
     expect(githubCliPatternFor({ os: "windows", arch: "x64" })).toBe("*-setup.exe");
     expect(githubCliPatternFor({ os: "macos", arch: null })).toBe("*_aarch64.dmg");
     expect(githubCliPatternFor({ os: "macos", arch: "x64" })).toBe("*_x64.dmg");
-    expect(githubCliPatternFor({ os: "linux", arch: "x64" })).toBe("*.AppImage");
+    expect(githubCliPatternFor({ os: "linux", arch: "x64" })).toBe("*_amd64.AppImage");
+    expect(githubCliPatternFor({ os: "linux", arch: "arm64" })).toBe("*_aarch64.AppImage");
     expect(githubCliPatternFor({ os: null, arch: null })).toBe("*");
+  });
+});
+
+describe("stable-name copies", () => {
+  const STABLE_COPIES = [
+    asset("OWL-Agent-Setup-x64.exe"), asset("OWL-Agent-x64.msi"), asset("OWL-Agent-macOS-AppleSilicon.dmg"),
+    asset("OWL-Agent-macOS-Intel.dmg"), asset("OWL-Agent-Linux-x64.AppImage"), asset("OWL-Agent-Linux-x64.deb"),
+    asset("OWL-Agent-Linux-x64.rpm"),
+  ];
+  const WITH_STABLE_COPIES = [...FULL_RELEASE, ...STABLE_COPIES];
+
+  it("leaves stable copies out of the versioned file list", () => {
+    STABLE_COPIES.forEach((copy) => expect(classifyReleaseAsset(copy)).toBeNull());
+    expect(installersForOs(WITH_STABLE_COPIES, "windows").map((item) => item.asset.name)).toEqual(["OWL_0.1.0_x64-setup.exe", "OWL_0.1.0_x64_en-US.msi"]);
+    expect(installersForOs(WITH_STABLE_COPIES, "macos")).toHaveLength(2);
+    expect(installersForOs(WITH_STABLE_COPIES, "linux")).toHaveLength(3);
+    expect(unclassifiedAssets(WITH_STABLE_COPIES).map((item) => item.name)).toEqual(["OWL_aarch64.app.tar.gz.sig", "SHA256SUMS.txt"]);
+  });
+
+  it("still picks the versioned installer as the primary file", () => {
+    expect(pickPrimaryInstaller(WITH_STABLE_COPIES, { os: "macos", arch: "x64" })?.asset.name).toBe("OWL_0.1.0_x64.dmg");
   });
 });

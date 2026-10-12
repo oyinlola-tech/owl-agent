@@ -1,14 +1,13 @@
-import { AppleLogo, ArrowUpRight, DownloadSimple, LinuxLogo, ShieldWarning, WindowsLogo } from "@phosphor-icons/react";
-import type { Icon } from "@phosphor-icons/react";
+import { ArrowUpRight, DownloadSimple, ShieldWarning } from "@phosphor-icons/react";
 import { Reveal } from "../../../components/reveal.component";
 import { RELEASES_PAGE_URL } from "../release/latestRelease.service";
 import type { LatestReleaseState } from "../release/releaseDownload.hook";
 import {
   findChecksumAsset, formatAssetSize, installersForOs, osDisplayName, pickPrimaryInstaller, type DetectedPlatform,
-  type LatestRelease, type OperatingSystem,
+  type LatestRelease,
 } from "../release/releaseAssets.helper";
-
-export const OS_ICONS: Record<OperatingSystem, Icon> = { windows: WindowsLogo, macos: AppleLogo, linux: LinuxLogo };
+import { OS_ICONS } from "../links/downloadButton.component";
+import { WebsitePrimaryDownloadCard } from "../links/websitePrimaryDownload.section";
 
 function ReleaseReadyCard({ release, platform }: { release: LatestRelease; platform: DetectedPlatform }) {
   const primaryInstaller = pickPrimaryInstaller(release.assets, platform);
@@ -68,7 +67,19 @@ function UnsignedInstallerNotice() {
   );
 }
 
-export function PrimaryDownloadSection({ releaseState, platform }: { releaseState: LatestReleaseState; platform: DetectedPlatform }) {
+export function PrimaryDownloadSection({ releaseState, platform, websiteOnly }: {
+  releaseState: LatestReleaseState; platform: DetectedPlatform; websiteOnly: boolean;
+}) {
+  if (websiteOnly) {
+    return (
+      <Reveal className="dl-primary">
+        <div className="dl-primary-card" aria-live="polite" aria-busy={releaseState.status === "loading"}>
+          <WebsitePrimaryDownloadCard releaseState={releaseState} platform={platform} />
+        </div>
+        <UnsignedInstallerNotice />
+      </Reveal>
+    );
+  }
   return (
     <Reveal className="dl-primary">
       <div className="dl-primary-card" aria-live="polite" aria-busy={releaseState.status === "loading"}>

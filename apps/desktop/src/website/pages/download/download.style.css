@@ -46,3 +46,8 @@
   .owl .dl-other .dl-assets { grid-template-columns: minmax(0, 1fr); }
   .owl .dl-manual { flex-direction: column; }
 }
+.owl .plat-stable { display: grid; gap: 6px; justify-items: start; margin: 4px 0 8px; }
+.owl .plat-stable-main { font-size: 13px; color: var(--ink-3); }
+.owl .plat-stable-alt { font-size: 13.5px; color: var(--ink-3); }
+.owl .plat-stable-alt a { color: var(--accent); text-decoration: none; }
+.owl .plat-stable-alt a:hover { text-decoration: underline; }

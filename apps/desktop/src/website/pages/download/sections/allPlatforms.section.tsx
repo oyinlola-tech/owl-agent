@@ -5,7 +5,7 @@ import {
   OPERATING_SYSTEMS, findChecksumAsset, formatAssetSize, installersForOs, osDisplayName, unclassifiedAssets,
   type DetectedPlatform, type OperatingSystem, type ReleaseAsset,
 } from "../release/releaseAssets.helper";
-import { OS_ICONS } from "./primaryDownload.section";
+import { OS_ICONS, StablePlatformButtons } from "../links/downloadButton.component";
 
 const SOURCE_BUILD_NOTES: Record<OperatingSystem, { build: string; note: string }> = {
   linux: { build: ".deb and .AppImage", note: "Needs WebKitGTK and the usual Tauri build packages." },
@@ -27,7 +27,16 @@ function AssetLink({ asset, label }: { asset: ReleaseAsset; label: string }) {
   );
 }
 
-export function AllPlatformsSection({ releaseState, platform }: { releaseState: LatestReleaseState; platform: DetectedPlatform }) {
+function pendingReleaseNote(releaseState: LatestReleaseState, websiteOnly: boolean): string {
+  if (releaseState.status === "loading") return "Checking for installers…";
+  if (!websiteOnly) return "Installer coming soon";
+  if (releaseState.status === "none") return "Works once the first release is published";
+  return "Release details unavailable; the button still works";
+}
+
+export function AllPlatformsSection({ releaseState, platform, websiteOnly }: {
+  releaseState: LatestReleaseState; platform: DetectedPlatform; websiteOnly: boolean;
+}) {
   if (releaseState.status !== "ready") {
     return (
       <div className="plats" id="platforms">
@@ -37,9 +46,10 @@ export function AllPlatformsSection({ releaseState, platform }: { releaseState: 
             <Reveal key={os} delay={index * 60} className="plat">
               <PlatformIcon size={34} weight="duotone" />
               <h3>{osDisplayName(os)}</h3>
+              {websiteOnly && <StablePlatformButtons os={os} />}
               <span className="plat-build">Builds {SOURCE_BUILD_NOTES[os].build}</span>
               <p>{SOURCE_BUILD_NOTES[os].note}</p>
-              <span className="plat-state"><Timer size={14} /> {releaseState.status === "loading" ? "Checking for installers…" : "Installer coming soon"}</span>
+              <span className="plat-state"><Timer size={14} /> {pendingReleaseNote(releaseState, websiteOnly)}</span>
             </Reveal>
           );
         })}
@@ -60,6 +70,7 @@ export function AllPlatformsSection({ releaseState, platform }: { releaseState: 
             <Reveal key={os} delay={index * 60} className={`plat${platform.os === os ? " plat-yours" : ""}`}>
               <PlatformIcon size={34} weight="duotone" />
               <h3>{osDisplayName(os)}{platform.os === os && <span className="plat-you">Your system</span>}</h3>
+              {websiteOnly && <StablePlatformButtons os={os} />}
               {installers.length > 0
                 ? <ul className="dl-assets">{installers.map((installer) => <AssetLink key={installer.asset.name} asset={installer.asset} label={installer.label} />)}</ul>
                 : <p>No {osDisplayName(os)} installer in this release.</p>}

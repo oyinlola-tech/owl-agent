@@ -1,3 +1,5 @@
+import { isStableCopyFileName } from "../links/stableDownloadLink.helper";
+
 export type OperatingSystem = "windows" | "macos" | "linux";
 type CpuArchitecture = "arm64" | "x64";
 export type DetectedPlatform = { os: OperatingSystem | null; arch: CpuArchitecture | null };
@@ -34,6 +36,7 @@ function architectureLabel(arch: CpuArchitecture | null): string {
 
 export function classifyReleaseAsset(asset: ReleaseAsset): ClassifiedAsset | null {
   const name = asset.name;
+  if (isStableCopyFileName(name)) return null;
   const arch = architectureFromAssetName(name);
   const withArch = (label: string) => (arch ? `${label}, ${architectureLabel(arch)}` : label);
   if (/-setup\.exe$/i.test(name)) return { asset, os: "windows", kind: "setup-exe", arch, label: withArch("Installer (.exe)") };
@@ -79,7 +82,7 @@ export function findChecksumAsset(assets: ReleaseAsset[]): ReleaseAsset | null {
 }
 
 export function unclassifiedAssets(assets: ReleaseAsset[]): ReleaseAsset[] {
-  return assets.filter((asset) => classifyReleaseAsset(asset) === null);
+  return assets.filter((asset) => !isStableCopyFileName(asset.name) && classifyReleaseAsset(asset) === null);
 }
 
 export function formatAssetSize(bytes: number): string {
@@ -125,6 +128,6 @@ export function detectPlatformFromClientHints(hints: { platform?: string; archit
 export function githubCliPatternFor(platform: DetectedPlatform): string {
   if (platform.os === "windows") return "*-setup.exe";
   if (platform.os === "macos") return platform.arch === "x64" ? "*_x64.dmg" : "*_aarch64.dmg";
-  if (platform.os === "linux") return "*.AppImage";
+  if (platform.os === "linux") return platform.arch === "arm64" ? "*_aarch64.AppImage" : "*_amd64.AppImage";
   return "*";
 }

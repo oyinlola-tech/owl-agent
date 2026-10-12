@@ -4,8 +4,7 @@ import { CodeBlock } from "../../../components/codeBlock.component";
 import { Reveal } from "../../../components/reveal.component";
 import { RELEASE_REPOSITORY } from "../release/latestRelease.service";
 import { githubCliPatternFor, type DetectedPlatform } from "../release/releaseAssets.helper";
-
-const INSTALL_SCRIPT_BASE_URL = `https://raw.githubusercontent.com/${RELEASE_REPOSITORY}/main/scripts/install`;
+import { INSTALL_SCRIPT_BASE_URL, UNIX_INSTALL_COMMAND, WINDOWS_INSTALL_COMMAND } from "../links/stableDownloadLink.helper";
 
 type TerminalTabId = "unix" | "windows" | "github";
 
@@ -24,7 +23,7 @@ function TerminalTabPanel({ tabId, platform }: { tabId: TerminalTabId; platform:
     return (
       <>
         <p>Downloads the right installer for your system from the latest GitHub release, checks it against <span className="mono">SHA256SUMS.txt</span>, and installs it.</p>
-        <CodeBlock label="Terminal" code={`curl -fsSL ${INSTALL_SCRIPT_BASE_URL}/owl.install.sh | sh`} />
+        <CodeBlock label="Terminal" code={UNIX_INSTALL_COMMAND} />
       </>
     );
   }
@@ -32,7 +31,7 @@ function TerminalTabPanel({ tabId, platform }: { tabId: TerminalTabId; platform:
     return (
       <>
         <p>Run in PowerShell. Downloads the Windows installer from the latest release, checks its SHA-256, and starts it.</p>
-        <CodeBlock label="PowerShell" code={`irm ${INSTALL_SCRIPT_BASE_URL}/owl.install.ps1 | iex`} />
+        <CodeBlock label="PowerShell" code={WINDOWS_INSTALL_COMMAND} />
       </>
     );
   }
@@ -40,7 +39,7 @@ function TerminalTabPanel({ tabId, platform }: { tabId: TerminalTabId; platform:
     <>
       <p>Already signed in to the GitHub CLI? Download the installer for your system and the checksums directly.</p>
       <CodeBlock label="GitHub CLI" code={`gh release download --repo ${RELEASE_REPOSITORY} --pattern '${githubCliPatternFor(platform)}' --pattern 'SHA256SUMS.txt'`} />
-      <p className="dl-hint">Change the pattern for another system: <span className="mono">*-setup.exe</span>, <span className="mono">*_aarch64.dmg</span>, <span className="mono">*_x64.dmg</span>, <span className="mono">*.AppImage</span>, <span className="mono">*.deb</span>, or <span className="mono">*.rpm</span>.</p>
+      <p className="dl-hint">Change the pattern for another system: <span className="mono">*-setup.exe</span>, <span className="mono">*_aarch64.dmg</span>, <span className="mono">*_x64.dmg</span>, <span className="mono">*_amd64.AppImage</span>, <span className="mono">*_amd64.deb</span>, or <span className="mono">*.x86_64.rpm</span>.</p>
     </>
   );
 }

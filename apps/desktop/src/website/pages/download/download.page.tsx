@@ -11,11 +11,14 @@ import { TerminalInstallSection } from "./sections/terminalInstall.section";
 import { BuildFromSourceSection } from "./sections/buildFromSource.section";
 import "./download.style.css";
 
-function introLedeFor(releaseState: LatestReleaseState): string {
+function introLedeFor(releaseState: LatestReleaseState, websiteOnly: boolean): string {
   if (releaseState.status === "ready") {
     const publishedOn = formatReleaseDate(releaseState.release.published_at);
     const version = releaseState.release.tag_name;
     return `Install the desktop app on Windows, macOS, or Linux. The latest release is ${version}${publishedOn ? `, published ${publishedOn}` : ""}.`;
+  }
+  if (releaseState.status === "none" && websiteOnly) {
+    return "Download OWL for Windows, macOS, or Linux. The first release is on its way; the download buttons start working as soon as it is published.";
   }
   if (releaseState.status === "none") {
     return "Pre-built installers are not published yet. Build the desktop app from source in a few minutes, or try the web preview right now.";
@@ -45,7 +48,7 @@ export function DownloadPage() {
   const websiteOnly = isWebsiteOnlyBuild();
   return (
     <>
-      <PageIntro eyebrow="Download" title="Get OWL on your machine." lede={introLedeFor(releaseState)}>
+      <PageIntro eyebrow="Download" title="Get OWL on your machine." lede={introLedeFor(releaseState, websiteOnly)}>
         <AppNotInstalledNotice />
         <div className="pintro-cta">
           {!websiteOnly && <a className="btn btn-dark btn-lg" href="/app">Try the web preview <ArrowRight size={16} weight="bold" /></a>}
@@ -54,8 +57,8 @@ export function DownloadPage() {
         </div>
       </PageIntro>
       <div className="wrap dlp">
-        <PrimaryDownloadSection releaseState={releaseState} platform={platform} />
-        <AllPlatformsSection releaseState={releaseState} platform={platform} />
+        <PrimaryDownloadSection releaseState={releaseState} platform={platform} websiteOnly={websiteOnly} />
+        <AllPlatformsSection releaseState={releaseState} platform={platform} websiteOnly={websiteOnly} />
         <TerminalInstallSection platform={platform} />
         <BuildFromSourceSection />
       </div>
