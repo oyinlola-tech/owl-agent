@@ -7,7 +7,9 @@ from ..documentResult_document import MAX_CSV_COLS, MAX_CSV_ROWS
 from .plainText_extractor import decode_text_bytes
 
 
-def extract_delimited_table(data: bytes, max_chars: int, delimiter: str, document_type: str) -> dict:
+def extract_delimited_table(
+    data: bytes, max_chars: int, delimiter: str, document_type: str
+) -> dict:
     text, encoding = decode_text_bytes(data)
     reader = csv.reader(io.StringIO(text), delimiter=delimiter)
     rows: list[list[str]] = []
@@ -30,7 +32,12 @@ def extract_delimited_table(data: bytes, max_chars: int, delimiter: str, documen
     return {
         "type": document_type,
         "text": body,
-        "structure": {"kind": document_type, "rows": len(rows), "cols": max_cols, "encoding": encoding},
+        "structure": {
+            "kind": document_type,
+            "rows": len(rows),
+            "cols": max_cols,
+            "encoding": encoding,
+        },
         "truncated": truncated,
     }
 
