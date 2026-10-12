@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import os
 import sqlite3
+from collections.abc import Callable
 
-from .databaseSchema_database import DATABASE_SCHEMA_SQL
+from ..settings.dataDirectory_setting import resolve_data_layout
+from .databaseMigration_database import apply_pending_migrations
+
+BUSY_TIMEOUT_MILLISECONDS = 5000
 
 
 def get_default_database_path() -> str:
-    base = os.environ.get("XDG_DATA_HOME", os.path.join(os.path.expanduser("~"), ".local", "share"))
-    return os.path.join(base, "owl-agent", "owl.db")
+    return resolve_data_layout().database_path
 
 
 def restrict_private_permissions(path: str, mode: int) -> None:
@@ -23,67 +26,43 @@ def restrict_private_permissions(path: str, mode: int) -> None:
         pass
 
 
-def open_database(path: str | None = None) -> sqlite3.Connection:
+def configure_connection_pragmas(conn: sqlite3.Connection, in_memory: bool) -> None:
+    if not in_memory:
+        conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA foreign_keys=ON")
+    conn.execute(f"PRAGMA busy_timeout={BUSY_TIMEOUT_MILLISECONDS}")
+
+
+def restrict_database_file_permissions(target: str) -> None:
+    for suffix in ("", "-wal", "-shm"):
+        restrict_private_permissions(target + suffix, 0o600)
+
+
+def open_database(
+    path: str | None = None, before_migrations: Callable[[], None] | None = None
+) -> sqlite3.Connection:
     target = path or get_default_database_path()
-    if target != ":memory:":
+    in_memory = target == ":memory:"
+    if not in_memory:
         folder = os.path.dirname(os.path.abspath(target))
         os.makedirs(folder, mode=0o700, exist_ok=True)
         restrict_private_permissions(folder, 0o700)
     conn = sqlite3.connect(target, check_same_thread=False)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.executescript(DATABASE_SCHEMA_SQL)
-    add_missing_columns(conn)
-    if target != ":memory:":
-        for suffix in ("", "-wal", "-shm"):
-            restrict_private_permissions(target + suffix, 0o600)
+    configure_connection_pragmas(conn, in_memory)
+    apply_pending_migrations(conn, before_migrations)
+    if not in_memory:
+        restrict_database_file_permissions(target)
     return conn
 
 
-def get_database_folder(conn: sqlite3.Connection) -> str:
-    rows = conn.execute("PRAGMA database_list").fetchall()
-    for row in rows:
+def get_database_file_path(conn: sqlite3.Connection) -> str:
+    for row in conn.execute("PRAGMA database_list").fetchall():
         if row[1] == "main" and row[2]:
-            return os.path.dirname(os.path.abspath(row[2]))
-    return os.path.join(os.path.expanduser("~"), ".local", "share", "owl-agent")
+            return os.path.abspath(row[2])
+    return ""
 
 
-def add_missing_columns(conn: sqlite3.Connection) -> None:
-    cols = {r[1] for r in conn.execute("PRAGMA table_info(approvals)").fetchall()}
-    for name, ddl in (
-        ("action", "TEXT NOT NULL DEFAULT ''"),
-        ("args_hash", "TEXT NOT NULL DEFAULT ''"),
-        ("scope", "TEXT NOT NULL DEFAULT 'once'"),
-        ("targets", "TEXT NOT NULL DEFAULT '[]'"),
-        ("expires_at", "TEXT"),
-        ("consumed_at", "TEXT"),
-        ("network", "INTEGER NOT NULL DEFAULT 0"),
-        ("sandboxed", "INTEGER"),
-    ):
-        if name not in cols:
-            conn.execute(f"ALTER TABLE approvals ADD COLUMN {name} {ddl}")
-    tcols = {r[1] for r in conn.execute("PRAGMA table_info(tasks)").fetchall()}
-    for name, ddl in (
-        ("iterations", "INTEGER NOT NULL DEFAULT 0"),
-        ("model_calls", "INTEGER NOT NULL DEFAULT 0"),
-        ("workspace", "TEXT NOT NULL DEFAULT ''"),
-        ("verification_plan", "TEXT NOT NULL DEFAULT '[]'"),
-        ("verification_attempts", "INTEGER NOT NULL DEFAULT 0"),
-        ("verification_note", "TEXT NOT NULL DEFAULT ''"),
-        ("verified_at", "TEXT"),
-        ("reverify_after", "TEXT"),
-    ):
-        if name not in tcols:
-            conn.execute(f"ALTER TABLE tasks ADD COLUMN {name} {ddl}")
-    vcols = {r[1] for r in conn.execute("PRAGMA table_info(verification_runs)").fetchall()}
-    if vcols and "pid" not in vcols:
-        conn.execute("ALTER TABLE verification_runs ADD COLUMN pid INTEGER")
-    for table in ("tool_calls", "verification_runs"):
-        cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
-        for name, ddl in (
-            ("sandboxed", "INTEGER"),
-            ("sandbox_backend", "TEXT NOT NULL DEFAULT ''"),
-        ):
-            if cols and name not in cols:
-                conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}")
-    conn.commit()
+def get_database_folder(conn: sqlite3.Connection) -> str:
+    path = get_database_file_path(conn)
+    return os.path.dirname(path) if path else resolve_data_layout().root
