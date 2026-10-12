@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "owl-agent",
+  "productName": "OWL",
   "version": "0.1.0",
   "identifier": "com.oyinlola.owl-agent",
   "build": {
@@ -12,9 +12,15 @@
   "app": {
     "windows": [
       {
-        "title": "owl-agent",
-        "width": 800,
-        "height": 600
+        "label": "main",
+        "title": "OWL",
+        "url": "/app",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 960,
+        "minHeight": 640,
+        "center": true,
+        "resizable": true
       }
     ],
     "security": {
@@ -24,12 +30,48 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "externalBin": [
+      "binaries/owl-service"
+    ],
+    "category": "DeveloperTool",
+    "shortDescription": "Local-first AI coding agent",
+    "longDescription": "OWL is a local-first desktop AI coding agent. It bundles the OWL agent service, which runs on 127.0.0.1 while the app is open.",
+    "copyright": "Copyright (C) 2026 Oluwayemi Oyinlola",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "linux": {
+      "deb": {
+        "section": "devel"
+      },
+      "rpm": {
+        "release": "1"
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    },
+    "license": "GPL-3.0-only",
+    "licenseFile": "../../../LICENSE",
+    "publisher": "Oluwayemi Oyinlola",
+    "homepage": "https://portfolio.oyinlola.site/"
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": [
+          "owl"
+        ]
+      }
+    }
   }
 }

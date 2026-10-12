@@ -1,30 +1,32 @@
 [package]
 name = "owl-agent"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+license = "GPL-3.0-only"
+homepage = "https://portfolio.oyinlola.site/"
+repository = "https://github.com/oyinlola-tech/owl-agent"
+description = "OWL desktop app"
+authors = ["Oluwayemi Oyinlola"]
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [lib]
-# The `_lib` suffix may seem redundant but it is necessary
-# to make the lib name unique and wouldn't conflict with the bin name.
-# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
 name = "owl_agent_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-build = { version = "2.7.0", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
-tauri-plugin-opener = "2"
+tauri = { version = "2.12.0", features = [] }
+tauri-plugin-opener = "2.7.0"
+tauri-plugin-shell = "2.4.0"
+tauri-plugin-deep-link = "2.5.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+getrandom = "=0.3.4"
 
+[target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
+tauri-plugin-single-instance = { version = "2.5.0", features = ["deep-link"] }
 
-# Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
 [profile.release]
 codegen-units = 1
 lto = true

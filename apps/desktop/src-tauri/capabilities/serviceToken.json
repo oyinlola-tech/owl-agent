@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "service-token",
+  "description": "Lets only the main window read the local OWL service token",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "allow-get-service-token"
+  ]
+}
