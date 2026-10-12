@@ -1,7 +1,7 @@
 import { CheckCircle, Cpu, LockKey, ShieldCheck, SpinnerGap, XCircle } from "@phosphor-icons/react";
 import { useAppStore } from "../../../../state/app.store";
-import { SampleDataBanner } from "../../../../../shared/components/pageLayout.component";
 import { Tag } from "../../../../../shared/components/tag.component";
+import { SampleDataBanner } from "../../../../../shared/components/pageLayout.component";
 import { SettingToggleRow, SettingValueRow } from "../settingRow.component";
 import type { ProviderVerification, SettingsServiceInfo } from "../settingsServiceInfo.hook";
 
@@ -11,10 +11,9 @@ export function AiSettingsSection({ serviceInfo, verification }: { serviceInfo: 
   const preferredModel = useAppStore((s) => s.preferredModel);
   const setPreferredModel = useAppStore((s) => s.setPreferredModel);
   const goToScreen = useAppStore((s) => s.goToScreen);
-  const { provider, providerDemo, models, reload } = serviceInfo;
+  const { provider, models } = serviceInfo;
   const { verifying, verdict, verdictOk, verifyProvider } = verification;
-  const providerTag = providerDemo ? <Tag hue="yellow" dot>Sample</Tag>
-    : provider ? provider.configured ? <Tag hue="green" dot>Configured</Tag> : <Tag hue="yellow" dot>Mock</Tag>
+  const providerTag = provider ? provider.configured ? <Tag hue="green" dot>Configured</Tag> : <Tag hue="yellow" dot>Mock</Tag>
     : <Tag hue="gray" dot>Offline</Tag>;
   const usableModels = models.filter((model) => model.status === "available" || model.status === "verified");
   const selectedModel = models.find((model) => model.id === preferredModel);
