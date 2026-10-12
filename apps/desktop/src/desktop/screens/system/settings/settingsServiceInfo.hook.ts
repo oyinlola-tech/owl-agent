@@ -1,25 +1,18 @@
 import { useEffect, useState } from "react";
 import { agentApi } from "../../../services/agentApi.service";
 import type { ModelEntry, ProviderRead } from "../../../services/agentApi.types";
-import { SAMPLE_MODELS, SAMPLE_PROVIDER } from "../../../services/samples/sampleCatalog.data";
-import { loadWithSampleFallback } from "../../../services/samples/sampleMode.helper";
 
 export function useSettingsServiceInfo() {
   const [provider, setProvider] = useState<ProviderRead | null>(null);
-  const [providerDemo, setProviderDemo] = useState(false);
+  const [providerDemo] = useState(false);
   const [models, setModels] = useState<ModelEntry[]>([]);
   const [roots, setRoots] = useState<string[]>([]);
-  const [rootsDemo, setRootsDemo] = useState(false);
+  const [rootsDemo] = useState(false);
   const [health, setHealth] = useState<string>("checking");
   const reload = async () => {
-    const [providerResult, registryResult, workspacesResult] = await Promise.all([
-      loadWithSampleFallback(agentApi.provider(), SAMPLE_PROVIDER),
-      loadWithSampleFallback(agentApi.registry(), { models: SAMPLE_MODELS }),
-      loadWithSampleFallback(agentApi.workspaces(), { roots: ["~/Projects/zudomart", "~/Projects/prooflens"] }),
-    ]);
-    setProvider(providerResult.data); setProviderDemo(providerResult.demo);
-    setModels(registryResult.data.models);
-    setRoots(workspacesResult.data.roots); setRootsDemo(workspacesResult.demo);
+    setProvider(await agentApi.provider().catch(() => null));
+    setModels(await agentApi.registry().then((r) => r.models).catch(() => [] as ModelEntry[]));
+    setRoots(await agentApi.workspaces().then((w) => w.roots).catch(() => [] as string[]));
     agentApi.health().then((status) => setHealth(`online · v${status.version}`)).catch(() => setHealth("offline"));
   };
   useEffect(() => { void reload(); }, []);

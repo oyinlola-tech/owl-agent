@@ -3,11 +3,9 @@ import {
   ArrowRight, Fingerprint, Folder, GitBranch, Globe, LockKey, ShieldCheck, Terminal, Wrench, type Icon,
 } from "@phosphor-icons/react";
 import { useAppStore } from "../../../state/app.store";
-import { agentApi } from "../../../services/agentApi.service";
+import { agentApi, isServiceAuthError } from "../../../services/agentApi.service";
 import { type ToolRead } from "../../../services/agentApi.types";
-import { SAMPLE_TOOLS } from "../../../services/samples/sampleCatalog.data";
-import { loadWithSampleFallback } from "../../../services/samples/sampleMode.helper";
-import { SampleDataBanner, PageHeader } from "../../../../shared/components/pageLayout.component";
+import { EmptyState, PageHeader } from "../../../../shared/components/pageLayout.component";
 import { Tag, type Hue } from "../../../../shared/components/tag.component";
 import "./agentTools.style.css";
 
@@ -21,12 +19,16 @@ const TOOL_GROUPS: { prefix: string; title: string; icon: Icon; hue: Hue; blurb:
 export function AgentToolsScreen() {
   const goToScreen = useAppStore((s) => s.goToScreen);
   const [tools, setTools] = useState<ToolRead[]>([]);
-  const [isSampleData, setIsSampleData] = useState(false);
+  const [failure, setFailure] = useState<"none" | "offline" | "unauthorized">("none");
 
   const loadTools = useCallback(async () => {
-    const toolResult = await loadWithSampleFallback(agentApi.tools(), SAMPLE_TOOLS);
-    setTools(toolResult.data);
-    setIsSampleData(toolResult.demo);
+    try {
+      setTools(await agentApi.tools());
+      setFailure("none");
+    } catch (error) {
+      setTools([]);
+      setFailure(isServiceAuthError(error) ? "unauthorized" : "offline");
+    }
   }, []);
   useEffect(() => { void loadTools(); }, [loadTools]);
 
@@ -45,8 +47,15 @@ export function AgentToolsScreen() {
           <ShieldCheck size={15} /> Permission settings <ArrowRight size={14} />
         </button>}
       />
-      {isSampleData && <SampleDataBanner what="the tool list" onRetry={() => void loadTools()} />}
+      {failure !== "none" && (
+        <EmptyState icon={Wrench} hue={failure === "unauthorized" ? "orange" : "red"}
+          title={failure === "unauthorized" ? "Sign in to the local service" : "OWL's local service isn't running"}
+          body={failure === "unauthorized" ? "The desktop app couldn't authenticate with the local service." : "Start the OWL service to see the tools it exposes."}>
+          <button className="btn btn-secondary" onClick={() => void loadTools()}>Retry</button>
+        </EmptyState>
+      )}
 
+      {failure === "none" && (<>
       <div className="x-tool-summary">
         <div><b>{tools.length}</b><span>tools available</span></div>
         <div><b className="x-green">{tools.length - approvalGatedCount}</b><span>run freely (read-only)</span></div>
@@ -84,6 +93,7 @@ export function AgentToolsScreen() {
           </ul>
         </section>
       ))}
+      </>)}
     </div>
   );
 }
