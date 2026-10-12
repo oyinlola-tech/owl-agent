@@ -1,0 +1,35 @@
+title = "OWL gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Test fixtures use fake, never-valid secrets on purpose to prove redaction works"
+paths = [
+  '''^services/agent/tests/''',
+  '''^services/agent/scripts/e2e/''',
+  '''^apps/desktop/.*\.test\.tsx?$''',
+  '''^apps/desktop/qa/''',
+]
+
+[[allowlists]]
+description = "Build output, caches and installed dependencies are not source and are never committed"
+paths = [
+  '''(^|/)node_modules/''',
+  '''(^|/)\.venv/''',
+  '''(^|/)__pycache__/''',
+  '''(^|/)\.pytest_cache/''',
+  '''(^|/)\.ruff_cache/''',
+  '''^apps/desktop/src-tauri/target/''',
+  '''^apps/desktop/src-tauri/binaries/''',
+  '''^apps/desktop/dist/''',
+  '''^services/agent/packaging/(build|dist)/''',
+]
+
+[[allowlists]]
+description = "Known fake fixture values used by redaction tests"
+regexTarget = "match"
+regexes = [
+  '''nvapi-(abcdef1234567890|SECRETXYZ999)''',
+  '''sk-abcdefgh12345678''',
+]

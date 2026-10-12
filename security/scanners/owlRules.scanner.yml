@@ -1,0 +1,113 @@
+rules:
+  - id: owl-subprocess-shell-true
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Commands must run as argv lists without a shell. shell=True lets model or repo text
+      inject extra commands. Pass a list and keep shell=False.
+    pattern-either:
+      - pattern: subprocess.$FUNC(..., shell=True, ...)
+      - pattern: asyncio.create_subprocess_exec(..., shell=True, ...)
+    metadata:
+      category: security
+      cwe: "CWE-78: OS Command Injection"
+
+  - id: owl-create-subprocess-shell
+    languages: [python]
+    severity: ERROR
+    message: >-
+      asyncio.create_subprocess_shell parses a shell string. Use create_subprocess_exec with
+      an argv list through the sandboxed CommandExecutor instead.
+    pattern: asyncio.create_subprocess_shell(...)
+    metadata:
+      category: security
+      cwe: "CWE-78: OS Command Injection"
+
+  - id: owl-os-system-or-popen
+    languages: [python]
+    severity: ERROR
+    message: >-
+      os.system / os.popen / os.exec*p* go through a shell or bypass the sandbox. Route commands
+      through the CommandExecutor.
+    pattern-either:
+      - pattern: os.system(...)
+      - pattern: os.popen(...)
+      - pattern: os.spawnlp(...)
+      - pattern: os.spawnvp(...)
+    metadata:
+      category: security
+      cwe: "CWE-78: OS Command Injection"
+
+  - id: owl-eval-exec
+    languages: [python]
+    severity: ERROR
+    message: >-
+      eval/exec/compile on dynamic input runs arbitrary code. Parse data with json or a
+      pydantic model instead.
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: exec(...)
+      - pattern: compile($SRC, ...)
+    metadata:
+      category: security
+      cwe: "CWE-95: Eval Injection"
+
+  - id: owl-pickle-loads
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Unpickling attacker-influenced bytes runs code. Store data as JSON.
+    pattern-either:
+      - pattern: pickle.loads(...)
+      - pattern: pickle.load(...)
+      - pattern: cPickle.loads(...)
+      - pattern: dill.loads(...)
+      - pattern: shelve.open(...)
+    metadata:
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+
+  - id: owl-yaml-unsafe-load
+    languages: [python]
+    severity: ERROR
+    message: >-
+      yaml.load without SafeLoader can construct arbitrary Python objects. Use yaml.safe_load.
+    patterns:
+      - pattern-either:
+          - pattern: yaml.load($DATA)
+          - pattern: yaml.load($DATA, Loader=$LOADER)
+          - pattern: yaml.unsafe_load(...)
+          - pattern: yaml.load_all(...)
+      - pattern-not: yaml.load($DATA, Loader=yaml.SafeLoader)
+      - pattern-not: yaml.load($DATA, Loader=yaml.CSafeLoader)
+    metadata:
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+
+  - id: owl-dangerously-set-inner-html
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      dangerouslySetInnerHTML renders model or page text as HTML in the privileged Tauri
+      webview. Render text nodes, or sanitize with a vetted sanitizer and add an accepted
+      finding that explains why.
+    pattern-either:
+      - pattern: <$EL dangerouslySetInnerHTML={...} />
+      - pattern: <$EL dangerouslySetInnerHTML={...}>...</$EL>
+      - pattern: "{dangerouslySetInnerHTML: ...}"
+    metadata:
+      category: security
+      cwe: "CWE-79: Cross-site Scripting"
+
+  - id: owl-inner-html-assignment
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: >-
+      Assigning innerHTML/outerHTML renders untrusted text as markup inside the webview.
+    pattern-either:
+      - pattern: $X.innerHTML = $V
+      - pattern: $X.outerHTML = $V
+      - pattern: $X.insertAdjacentHTML(...)
+    metadata:
+      category: security
+      cwe: "CWE-79: Cross-site Scripting"
