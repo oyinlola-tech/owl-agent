@@ -1,8 +1,10 @@
-"""Chat and verify endpoints. Provider is stubbed; no key, no network."""
+import os
+import tempfile
 
-from fastapi.testclient import TestClient
+from supports.authorizedClient_support import open_authorized_client
 
-from app.main import create_app
+from app import create_app
+from app.settings.serviceSettings_setting import Settings
 
 
 class StubProvider:
@@ -34,14 +36,18 @@ class StubProvider:
         return {"name": self.name, "configured": True, "model": "stub-model"}
 
 
-def client_with(stub):
-    app = create_app()
+def build_client_with_provider(stub):
+    db_folder = tempfile.mkdtemp(prefix="owl-chat-test-")
+    settings = Settings(
+        step_delay=0.01, db_path=os.path.join(db_folder, "t.db"), _env_file=None, nvidia_api_key=""
+    )
+    app = create_app(settings)
     app.state.provider = stub
-    return TestClient(app)
+    return open_authorized_client(app)
 
 
 def test_verify_ok_with_working_provider():
-    with client_with(StubProvider()) as client:
+    with build_client_with_provider(StubProvider()) as client:
         res = client.post("/provider/verify")
         assert res.status_code == 200
         body = res.json()
@@ -54,19 +60,23 @@ def test_verify_ok_with_working_provider():
         }
 
 
-def test_verify_reports_unconfigured():
-    from app.main import create_app as fresh
+def test_verify_reports_unconfigured(tmp_path):
+    from app import create_app as fresh
+    from app.settings.serviceSettings_setting import Settings
 
-    with TestClient(fresh()) as client:  # no key in env: mock provider
+    settings = Settings(
+        step_delay=0.01, db_path=str(tmp_path / "t.db"), _env_file=None, nvidia_api_key=""
+    )
+    with open_authorized_client(fresh(settings)) as client:
         res = client.post("/provider/verify")
         assert res.json()["ok"] is True
         assert res.json()["provider"] == "mock"
 
 
 def test_verify_reports_failing_provider():
-    from app.providers import ProviderNetworkError
+    from app.llms.providers.providerError_provider import ProviderNetworkError
 
-    with client_with(StubProvider(fail_with=ProviderNetworkError("down"))) as client:
+    with build_client_with_provider(StubProvider(fail_with=ProviderNetworkError("down"))) as client:
         res = client.post("/provider/verify")
         assert res.json()["ok"] is False
         assert res.json()["code"] == "unavailable"
@@ -74,7 +84,7 @@ def test_verify_reports_failing_provider():
 
 def test_chat_sends_history_and_returns_reply():
     stub = StubProvider(reply="hello there")
-    with client_with(stub) as client:
+    with build_client_with_provider(stub) as client:
         res = client.post(
             "/chat",
             json={
@@ -95,7 +105,7 @@ def test_chat_sends_history_and_returns_reply():
 
 
 def test_chat_validation():
-    with client_with(StubProvider()) as client:
+    with build_client_with_provider(StubProvider()) as client:
         assert client.post("/chat", json={"messages": []}).status_code == 422
         big = [{"role": "user", "content": "x"} for _ in range(21)]
         assert client.post("/chat", json={"messages": big}).status_code == 422
@@ -107,7 +117,7 @@ def test_chat_validation():
 
 def test_chat_stream_emits_deltas_and_done():
     stub = StubProvider(reply="streamed text")
-    with client_with(stub) as client:
+    with build_client_with_provider(stub) as client:
         with client.stream(
             "POST", "/chat/stream", json={"messages": [{"role": "user", "content": "hi"}]}
         ) as stream:
@@ -119,10 +129,10 @@ def test_chat_stream_emits_deltas_and_done():
 
 
 def test_chat_stream_error_event_on_failure():
-    from app.providers import ProviderTimeoutError
+    from app.llms.providers.providerError_provider import ProviderTimeoutError
 
     stub = StubProvider(fail_with=ProviderTimeoutError("slow"))
-    with client_with(stub) as client:
+    with build_client_with_provider(stub) as client:
         with client.stream(
             "POST", "/chat/stream", json={"messages": [{"role": "user", "content": "hi"}]}
         ) as stream:

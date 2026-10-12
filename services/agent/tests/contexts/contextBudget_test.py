@@ -1,12 +1,6 @@
-"""Context budgets and compression. Deterministic, no model calls."""
-
-from app.context import (
-    BudgetManager,
-    Compressor,
-    ContextPart,
-    count_tokens,
-    validate_summary,
-)
+from app.contexts.contextBudget_context import ContextBudgetPlanner, ContextPart
+from app.contexts.contextCompressor_context import ContextCompressor, list_missing_summary_fields
+from app.contexts.tokenCounter_context import count_tokens
 
 
 def test_estimator_is_labeled():
@@ -16,9 +10,9 @@ def test_estimator_is_labeled():
 
 
 def test_budget_report_math():
-    mgr = BudgetManager(limit=1000, reserve_fraction=0.25)
+    mgr = ContextBudgetPlanner(limit=1000, reserve_fraction=0.25)
     parts = [ContextPart(category="history", text="x" * 400)]
-    report = mgr.budget("m", parts)
+    report = mgr.build_budget_report("m", parts)
     assert report.limit == 1000
     assert report.limit_source.startswith("verified")
     assert report.reserved == 250
@@ -29,28 +23,28 @@ def test_budget_report_math():
 
 
 def test_fallback_limit_is_labeled_estimate():
-    mgr = BudgetManager(limit=None)
-    report = mgr.budget("m", [ContextPart(category="history", text="hi")])
+    mgr = ContextBudgetPlanner(limit=None)
+    report = mgr.build_budget_report("m", [ContextPart(category="history", text="hi")])
     assert report.limit == 8192
     assert "fallback" in report.limit_source
     assert "estimate" in report.limit_source
 
 
 def test_trim_never_drops_safety_or_constraints():
-    mgr = BudgetManager(limit=100, reserve_fraction=0.0)
+    mgr = ContextBudgetPlanner(limit=100, reserve_fraction=0.0)
     parts = [
         ContextPart(category="history", text="x" * 400),
         ContextPart(category="safety", text="approvals enforced"),
         ContextPart(category="user_constraints", text="do not delete data"),
     ]
-    kept, dropped = mgr.trim_to_budget("m", parts)
+    kept, dropped = mgr.drop_low_priority_parts_to_fit("m", parts)
     kept_cats = {p.category for p in kept}
     assert {"safety", "user_constraints"} <= kept_cats
     assert "history" in dropped
 
 
 def test_level1_dedupes_only_redundant_categories():
-    comp = Compressor()
+    comp = ContextCompressor()
     dup = "same output"
     parts = [
         ContextPart(category="tool_outputs", text=dup),
@@ -58,32 +52,32 @@ def test_level1_dedupes_only_redundant_categories():
         ContextPart(category="instructions", text=dup),
         ContextPart(category="instructions", text=dup),
     ]
-    kept, saved = comp.level1_dedupe(parts)
-    assert len(kept) == 3  # one tool output removed, instructions kept
+    kept, saved = comp.remove_duplicate_parts(parts)
+    assert len(kept) == 3
     assert saved > 0
 
 
 def test_level2_summary_validates_required_fields():
-    comp = Compressor()
+    comp = ContextCompressor()
     messages = [
         {"role": "user", "text": "Decided to use Postgres in src/auth/service.go"},
         {"role": "assistant", "text": "Done, but saw an error on retry"},
     ]
-    summary = comp.level2_summarize(messages)
-    assert validate_summary(summary) == []
+    summary = comp.summarize_messages(messages)
+    assert list_missing_summary_fields(summary) == []
     assert summary["files"] == ["src/auth/service.go"]
 
 
 def test_originals_survive_compression():
     originals = [{"role": "user", "text": "exact value 42, do not touch"}]
-    comp = Compressor()
-    summary = comp.level2_summarize(originals)
-    assert validate_summary(summary) == []
+    comp = ContextCompressor()
+    summary = comp.summarize_messages(originals)
+    assert list_missing_summary_fields(summary) == []
     assert originals[0]["text"] == "exact value 42, do not touch"
 
 
 def test_level4_keeps_safety_and_state():
-    comp = Compressor()
+    comp = ContextCompressor()
     parts = [
         ContextPart(category="safety", text="s"),
         ContextPart(category="history", text="h" * 100),
@@ -98,7 +92,7 @@ def test_level4_keeps_safety_and_state():
         "remaining": ["y"],
         "risks": [],
     }
-    kept = comp.level4_compact(parts, summary)
+    kept = comp.compact_to_essentials(parts, summary)
     cats = {p.category for p in kept}
     assert {"safety", "task_state", "history"} <= cats
     assert "tool_outputs" not in cats

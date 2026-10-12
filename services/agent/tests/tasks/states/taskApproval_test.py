@@ -1,6 +1,4 @@
-"""Approval gating against the real loop. Scripted provider, tmp workspace."""
-
-from conftest import ScriptedMock, make_client, wait_for
+from supports.taskClient_support import ScriptedMockProvider, make_test_client, wait_for_task_status
 
 PLAN = ["Inspect", "Verify"]
 ACTIONS = [
@@ -10,9 +8,9 @@ ACTIONS = [
 
 
 def test_approval_gate_blocks_until_backend_decision(tmp_path):
-    with make_client(tmp_path, provider=ScriptedMock(PLAN, ACTIONS)) as client:
+    with make_test_client(tmp_path, provider=ScriptedMockProvider(PLAN, ACTIONS)) as client:
         task_id = client.post("/tasks", json={"prompt": "gated work"}).json()["id"]
-        wait_for(client, task_id, ("awaiting_approval",))
+        wait_for_task_status(client, task_id, ("awaiting_approval",))
         assert client.get(f"/tasks/{task_id}").json()["status"] == "awaiting_approval"
         assert (
             client.post(
@@ -23,9 +21,9 @@ def test_approval_gate_blocks_until_backend_decision(tmp_path):
 
 
 def test_approve_continues_task(tmp_path):
-    with make_client(tmp_path, provider=ScriptedMock(PLAN, ACTIONS)) as client:
+    with make_test_client(tmp_path, provider=ScriptedMockProvider(PLAN, ACTIONS)) as client:
         task_id = client.post("/tasks", json={"prompt": "approve me"}).json()["id"]
-        wait_for(client, task_id, ("awaiting_approval",))
+        wait_for_task_status(client, task_id, ("awaiting_approval",))
         aids = [
             a["id"]
             for a in client.get(f"/tasks/{task_id}/approvals").json()
@@ -46,16 +44,18 @@ def test_approve_continues_task(tmp_path):
             ).status_code
             == 409
         )
-        final = wait_for(client, task_id, ("completed", "failed"), timeout=15.0)
-        assert final["status"] == "completed"
+        final = wait_for_task_status(
+            client, task_id, ("completed_unverified", "verified_completed", "failed"), timeout=15.0
+        )
+        assert final["status"] == "completed_unverified"
         calls = client.get(f"/tasks/{task_id}/tool-calls").json()
         assert any(c["tool"] == "exec_run" and c["status"] == "ok" for c in calls)
 
 
 def test_reject_blocks_step(tmp_path):
-    with make_client(tmp_path, provider=ScriptedMock(PLAN, ACTIONS)) as client:
+    with make_test_client(tmp_path, provider=ScriptedMockProvider(PLAN, ACTIONS)) as client:
         task_id = client.post("/tasks", json={"prompt": "reject me"}).json()["id"]
-        wait_for(client, task_id, ("awaiting_approval",))
+        wait_for_task_status(client, task_id, ("awaiting_approval",))
         aids = [
             a["id"]
             for a in client.get(f"/tasks/{task_id}/approvals").json()
@@ -65,5 +65,5 @@ def test_reject_blocks_step(tmp_path):
             f"/tasks/{task_id}/approvals/{aids[0]}/decision", json={"approved": False}
         )
         assert decided.json()["status"] == "rejected"
-        final = wait_for(client, task_id, ("paused", "failed"), timeout=10.0)
+        final = wait_for_task_status(client, task_id, ("paused", "failed"), timeout=10.0)
         assert final["status"] == "paused"

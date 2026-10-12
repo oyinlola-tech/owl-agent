@@ -1,9 +1,15 @@
 import json as jsonlib
 
 import httpx
+from supports.authorizedClient_support import LIVE_SERVER_TOKEN
+
+LIVE_HEADERS = {
+    "Authorization": f"Bearer {LIVE_SERVER_TOKEN}",
+    "Content-Type": "application/json",
+}
 
 
-def read_events(stream, wanted, limit=30):
+def read_sse_events_until(stream, wanted, limit=30):
     seen = []
     data = {}
     current = ""
@@ -25,13 +31,12 @@ def read_events(stream, wanted, limit=30):
 
 
 def test_stream_delivers_snapshot_and_events(live_server):
-    with httpx.Client(base_url=live_server, timeout=10.0) as client:
+    with httpx.Client(base_url=live_server, timeout=10.0, headers=LIVE_HEADERS) as client:
         task_id = client.post("/tasks", json={"prompt": "stream me"}).json()["id"]
         with client.stream("GET", f"/tasks/{task_id}/events") as stream:
             assert stream.status_code == 200
-            seen, data = read_events(stream, ("task.awaiting_approval",))
+            seen, data = read_sse_events_until(stream, ("task.awaiting_approval",))
     assert seen[0] == "snapshot"
-    # The runner is fast: the gate may already be reached, covered by recent.
     covered = set(seen) | set(data["snapshot"].get("recent", []))
     assert "task.started" in covered
     assert "task.progress" in covered
@@ -40,13 +45,17 @@ def test_stream_delivers_snapshot_and_events(live_server):
 
 
 def test_cancel_from_gate_and_snapshot_reflects_it(live_server):
-    with httpx.Client(base_url=live_server, timeout=10.0) as client:
+    with httpx.Client(base_url=live_server, timeout=10.0, headers=LIVE_HEADERS) as client:
         task_id = client.post("/tasks", json={"prompt": "cancel me"}).json()["id"]
         with client.stream("GET", f"/tasks/{task_id}/events") as stream:
-            seen, data = read_events(stream, ("task.awaiting_approval",))
+            seen, data = read_sse_events_until(stream, ("task.awaiting_approval",))
         covered = set(seen) | set(data["snapshot"].get("recent", []))
         assert "task.awaiting_approval" in covered
         cancelled = client.post(f"/tasks/{task_id}/cancel")
-        assert cancelled.json()["status"] in ("cancelled", "completed")
+        assert cancelled.json()["status"] in (
+            "cancelled",
+            "completed_unverified",
+            "verified_completed",
+        )
         if cancelled.json()["status"] == "cancelled":
             assert client.get(f"/tasks/{task_id}").json()["status"] == "cancelled"

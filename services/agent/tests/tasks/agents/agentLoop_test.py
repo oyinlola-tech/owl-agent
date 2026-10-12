@@ -1,11 +1,9 @@
-"""Agent loop, tools, and security. Scripted provider, tmp workspaces only."""
-
 import json as jsonlib
 
-from conftest import ScriptedMock, make_client, wait_for
+from supports.taskClient_support import ScriptedMockProvider, make_test_client, wait_for_task_status
 
 
-def approve_pending(client, task_id):
+def approve_first_pending_approval(client, task_id):
     aids = [
         a["id"]
         for a in client.get(f"/tasks/{task_id}/approvals").json()
@@ -25,10 +23,15 @@ def test_fs_read_and_search_flow(tmp_path):
         {"tool": "fs_read", "args": {"path": "app.py"}, "why": "read"},
         {"done": True, "summary": "read it"},
     ]
-    with make_client(tmp_path, provider=ScriptedMock(["Inspect"], script)) as client:
+    with make_test_client(tmp_path, provider=ScriptedMockProvider(["Inspect"], script)) as client:
         task_id = client.post("/tasks", json={"prompt": "read the file"}).json()["id"]
-        final = wait_for(client, task_id, ("completed", "failed", "paused"), timeout=15.0)
-        assert final["status"] == "completed"
+        final = wait_for_task_status(
+            client,
+            task_id,
+            ("completed_unverified", "verified_completed", "failed", "paused"),
+            timeout=15.0,
+        )
+        assert final["status"] == "completed_unverified"
         calls = client.get(f"/tasks/{task_id}/tool-calls").json()
         assert any(c["tool"] == "fs_read" and c["status"] == "ok" for c in calls)
 
@@ -41,9 +44,9 @@ def test_apply_unknown_proposal_fails_safely(tmp_path):
         {"tool": "fs_apply_edit", "args": {"proposal_id": "prop-nope"}, "why": "apply"},
         {"done": True, "summary": "moved on"},
     ]
-    with make_client(tmp_path, provider=ScriptedMock(["Edit"], script)) as client:
+    with make_test_client(tmp_path, provider=ScriptedMockProvider(["Edit"], script)) as client:
         task_id = client.post("/tasks", json={"prompt": "edit notes"}).json()["id"]
-        wait_for(client, task_id, ("awaiting_approval",), timeout=10.0)
+        wait_for_task_status(client, task_id, ("awaiting_approval",), timeout=10.0)
         aids = [
             a["id"]
             for a in client.get(f"/tasks/{task_id}/approvals").json()
@@ -51,8 +54,13 @@ def test_apply_unknown_proposal_fails_safely(tmp_path):
         ]
         assert aids
         client.post(f"/tasks/{task_id}/approvals/{aids[0]}/decision", json={"approved": True})
-        final = wait_for(client, task_id, ("completed", "failed", "paused"), timeout=15.0)
-        assert final["status"] == "completed"
+        final = wait_for_task_status(
+            client,
+            task_id,
+            ("completed_unverified", "verified_completed", "failed", "paused"),
+            timeout=15.0,
+        )
+        assert final["status"] == "completed_unverified"
         assert (ws / "notes.txt").read_text() == "version one"
         calls = client.get(f"/tasks/{task_id}/tool-calls").json()
         assert any(c["tool"] == "fs_apply_edit" and c["status"] == "error" for c in calls)
@@ -66,10 +74,15 @@ def test_prompt_injection_does_not_execute(tmp_path):
         {"tool": "fs_read", "args": {"path": "data.txt"}, "why": "read"},
         {"done": True, "summary": "read only"},
     ]
-    with make_client(tmp_path, provider=ScriptedMock(["Inspect"], script)) as client:
+    with make_test_client(tmp_path, provider=ScriptedMockProvider(["Inspect"], script)) as client:
         task_id = client.post("/tasks", json={"prompt": "read data"}).json()["id"]
-        final = wait_for(client, task_id, ("completed", "failed", "paused"), timeout=15.0)
-        assert final["status"] == "completed"
+        final = wait_for_task_status(
+            client,
+            task_id,
+            ("completed_unverified", "verified_completed", "failed", "paused"),
+            timeout=15.0,
+        )
+        assert final["status"] == "completed_unverified"
         calls = client.get(f"/tasks/{task_id}/tool-calls").json()
         tools = [c["tool"] for c in calls]
         assert "exec_run" not in tools
@@ -79,14 +92,21 @@ def test_prompt_injection_does_not_execute(tmp_path):
 def test_iteration_limit_pauses(tmp_path):
     script = [{"tool": "fs_list", "args": {"path": "."}, "why": "again"}] * 10
     plan = ["A", "B", "C", "D"]
-    with make_client(tmp_path, provider=ScriptedMock(plan, script), max_iterations=2) as client:
+    with make_test_client(
+        tmp_path, provider=ScriptedMockProvider(plan, script), max_iterations=2
+    ) as client:
         task_id = client.post("/tasks", json={"prompt": "loop forever"}).json()["id"]
-        final = wait_for(client, task_id, ("paused", "completed", "failed"), timeout=15.0)
+        final = wait_for_task_status(
+            client,
+            task_id,
+            ("paused", "completed_unverified", "verified_completed", "failed"),
+            timeout=15.0,
+        )
         assert final["status"] == "paused"
 
 
 def test_unparseable_model_output_recovers(tmp_path):
-    class Garbage:
+    class GarbageProvider:
         name = "mock"
 
         async def complete(self, messages, model=None):
@@ -104,10 +124,15 @@ def test_unparseable_model_output_recovers(tmp_path):
         def pop_usage(self):
             return None
 
-    with make_client(tmp_path, provider=Garbage(), max_iterations=3) as client:
+    with make_test_client(tmp_path, provider=GarbageProvider(), max_iterations=3) as client:
         task_id = client.post("/tasks", json={"prompt": "garbage in"}).json()["id"]
-        final = wait_for(client, task_id, ("paused", "completed", "failed"), timeout=15.0)
-        assert final["status"] in ("paused", "completed", "failed")
+        final = wait_for_task_status(
+            client,
+            task_id,
+            ("paused", "completed_unverified", "verified_completed", "failed"),
+            timeout=15.0,
+        )
+        assert final["status"] in ("paused", "completed_unverified", "verified_completed", "failed")
 
 
 def test_task_scoped_approval_reused(tmp_path):
@@ -118,10 +143,9 @@ def test_task_scoped_approval_reused(tmp_path):
         {"tool": "exec_run", "args": {"argv": ["echo", "one"], "cwd": "."}, "why": "t2"},
         {"done": True, "summary": "twice"},
     ]
-    with make_client(tmp_path, provider=ScriptedMock(["A", "B"], script)) as client:
+    with make_test_client(tmp_path, provider=ScriptedMockProvider(["A", "B"], script)) as client:
         task_id = client.post("/tasks", json={"prompt": "run twice"}).json()["id"]
-        wait_for(client, task_id, ("awaiting_approval",))
-        # Manually create a task-scoped approval for the exact action.
+        wait_for_task_status(client, task_id, ("awaiting_approval",))
         scoped = client.post(
             f"/tasks/{task_id}/approvals",
             json={
@@ -139,14 +163,19 @@ def test_task_scoped_approval_reused(tmp_path):
         client.post(
             f"/tasks/{task_id}/approvals/{scoped.json()['id']}/decision", json={"approved": True}
         )
-        final = wait_for(client, task_id, ("completed", "failed", "paused"), timeout=15.0)
-        assert final["status"] == "completed"
+        final = wait_for_task_status(
+            client,
+            task_id,
+            ("completed_unverified", "verified_completed", "failed", "paused"),
+            timeout=15.0,
+        )
+        assert final["status"] == "completed_unverified"
         calls = client.get(f"/tasks/{task_id}/tool-calls").json()
         assert sum(1 for c in calls if c["tool"] == "exec_run" and c["status"] == "ok") == 2
 
 
 def test_task_scope_rejected_for_high_risk(tmp_path):
-    with make_client(tmp_path, provider=ScriptedMock(["A"], [])) as client:
+    with make_test_client(tmp_path, provider=ScriptedMockProvider(["A"], [])) as client:
         task_id = client.post("/tasks", json={"prompt": "push it"}).json()["id"]
         res = client.post(
             f"/tasks/{task_id}/approvals",
@@ -180,12 +209,17 @@ def test_git_commit_flow(tmp_path):
         },
         {"done": True, "summary": "committed"},
     ]
-    with make_client(tmp_path, provider=ScriptedMock(["Commit"], script)) as client:
+    with make_test_client(tmp_path, provider=ScriptedMockProvider(["Commit"], script)) as client:
         task_id = client.post("/tasks", json={"prompt": "commit a.txt"}).json()["id"]
-        wait_for(client, task_id, ("awaiting_approval",))
-        approve_pending(client, task_id)
-        final = wait_for(client, task_id, ("completed", "failed", "paused"), timeout=15.0)
-        assert final["status"] == "completed"
+        wait_for_task_status(client, task_id, ("awaiting_approval",))
+        approve_first_pending_approval(client, task_id)
+        final = wait_for_task_status(
+            client,
+            task_id,
+            ("completed_unverified", "verified_completed", "failed", "paused"),
+            timeout=15.0,
+        )
+        assert final["status"] == "completed_unverified"
         out = subprocess.run(
             ["git", "-C", str(ws), "log", "--oneline"], capture_output=True, text=True
         ).stdout
@@ -193,16 +227,20 @@ def test_git_commit_flow(tmp_path):
 
 
 def test_usage_and_routing_recorded(tmp_path):
-    with make_client(tmp_path, provider=ScriptedMock(["Hi"], [{"done": True}])) as client:
+    with make_test_client(
+        tmp_path, provider=ScriptedMockProvider(["Hi"], [{"done": True}])
+    ) as client:
         task_id = client.post("/tasks", json={"prompt": "fix this traceback please"}).json()["id"]
-        wait_for(client, task_id, ("completed",), timeout=15.0)
+        wait_for_task_status(
+            client, task_id, ("completed_unverified", "verified_completed"), timeout=15.0
+        )
         rows = client.get("/usage", params={"task_id": task_id}).json()
         assert rows
         assert all("estimated" in r for r in rows)
 
 
 def test_tools_listed_without_secrets(tmp_path):
-    with make_client(tmp_path, provider=ScriptedMock(["x"], [])) as client:
+    with make_test_client(tmp_path, provider=ScriptedMockProvider(["x"], [])) as client:
         tools = client.get("/tools").json()
         names = [t["name"] for t in tools]
         assert "fs_read" in names and "exec_run" in names
@@ -213,18 +251,22 @@ def test_tools_listed_without_secrets(tmp_path):
 
 
 def test_workspaces_listed(tmp_path):
-    with make_client(tmp_path, provider=ScriptedMock(["x"], [])) as client:
+    with make_test_client(tmp_path, provider=ScriptedMockProvider(["x"], [])) as client:
         roots = client.get("/workspaces").json()["roots"]
         assert any("ws" in r for r in roots)
 
 
 def test_detail_bundles_state(tmp_path):
-    with make_client(tmp_path, provider=ScriptedMock(["D"], [{"done": True}])) as client:
+    with make_test_client(
+        tmp_path, provider=ScriptedMockProvider(["D"], [{"done": True}])
+    ) as client:
         task_id = client.post("/tasks", json={"prompt": "detail me"}).json()["id"]
-        wait_for(client, task_id, ("completed",), timeout=15.0)
-        detail = client.get(f"/tasks/{task_id}/detail").json()
-        assert detail["task"]["id"] == task_id
-        assert isinstance(detail["steps"], list)
-        assert isinstance(detail["tool_calls"], list)
-        assert isinstance(detail["checkpoints"], list)
-        assert isinstance(detail["usage"], list)
+        wait_for_task_status(
+            client, task_id, ("completed_unverified", "verified_completed"), timeout=15.0
+        )
+        task_detail = client.get(f"/tasks/{task_id}/detail").json()
+        assert task_detail["task"]["id"] == task_id
+        assert isinstance(task_detail["steps"], list)
+        assert isinstance(task_detail["tool_calls"], list)
+        assert isinstance(task_detail["checkpoints"], list)
+        assert isinstance(task_detail["usage"], list)
