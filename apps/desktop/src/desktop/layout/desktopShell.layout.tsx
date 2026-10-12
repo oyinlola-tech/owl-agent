@@ -32,6 +32,8 @@ import { ModelsUsageScreen } from "../screens/system/models/modelsUsage.screen";
 import { AgentToolsScreen } from "../screens/system/agentTools/agentTools.screen";
 import { PlaybooksScreen } from "../screens/knowledge/playbooks/playbooks.screen";
 import { HelpScreen } from "../screens/system/help/help.screen";
+import { OnboardingScreen } from "../screens/onboarding/onboarding.screen";
+import { ensureOnboardingChecked, useOnboardingStore } from "../screens/onboarding/onboarding.state";
 
 const SCREEN_COMPONENTS: Record<AppScreen, ComponentType> = {
   welcome: HomeScreen,
@@ -59,8 +61,9 @@ export function DesktopShell({ initial = "welcome" }: { initial?: AppScreen }) {
   const setAskOwlOpen = useAppStore((s) => s.setAskOwlOpen);
   const goToScreen = useAppStore((s) => s.goToScreen);
   const serviceAuthFailed = useServiceConnectionStore((s) => s.authFailed);
+  const onboardingActive = useOnboardingStore((s) => s.status === "active");
 
-  useEffect(() => { startPendingApprovalsSync(); }, []);
+  useEffect(() => { startPendingApprovalsSync(); ensureOnboardingChecked(); }, []);
 
   useEffect(() => {
     goToScreen(initial);
@@ -76,6 +79,8 @@ export function DesktopShell({ initial = "welcome" }: { initial?: AppScreen }) {
   useGlobalShortcuts();
 
   const ActiveScreen = SCREEN_COMPONENTS[screen];
+
+  if (onboardingActive) return <OnboardingScreen />;
 
   return (
     <div className="desk">

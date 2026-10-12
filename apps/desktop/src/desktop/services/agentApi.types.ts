@@ -1,3 +1,179 @@
+export interface ProjectStackCheck {
+  kind: string;
+  command: string;
+  required: boolean;
+  safe: boolean;
+  unsafe_reason: string;
+  source: string;
+  runs: boolean;
+}
+
+export interface ProjectStack {
+  languages?: string[];
+  frameworks?: string[];
+  package_manager?: string;
+  checks?: ProjectStackCheck[];
+  checks_note?: string;
+  is_git_repository?: boolean;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  path: string;
+  stack: ProjectStack;
+  created_at: string;
+  updated_at: string;
+  last_opened_at: string | null;
+  exists: boolean;
+}
+
+export interface ProjectListRead {
+  projects: Project[];
+}
+
+export interface ProjectCreateRead {
+  project: Project;
+  created: boolean;
+}
+
+export interface TreeEntry {
+  name: string;
+  path: string;
+  type: "file" | "directory";
+  symlink: boolean;
+  size: number;
+  ignored: boolean;
+}
+
+export interface ProjectTree {
+  path: string;
+  entries: TreeEntry[];
+  truncated: boolean;
+  hidden: { ignored: number; sensitive: number };
+}
+
+export interface ProjectFileContent {
+  path: string;
+  content: string;
+  size: number;
+  sha256: string;
+}
+
+export interface FileSaveResult {
+  path: string;
+  bytes: number;
+  sha256: string;
+  journal_id: string;
+  created: boolean;
+  source: string;
+}
+
+export interface SearchResult {
+  path: string;
+  line: number;
+  preview: string;
+  kind: "name" | "content";
+}
+
+export interface SearchResponse {
+  query: string;
+  results: SearchResult[];
+  truncated: boolean;
+  files_scanned: number;
+}
+
+export interface CommandRow {
+  id: string;
+  project_id: string;
+  command: string;
+  argv: string[];
+  cwd: string;
+  status: string;
+  risk: string;
+  risk_reason: string;
+  sandboxed: boolean | null;
+  sandbox_backend: string;
+  network: boolean;
+  exit_code: number | null;
+  stdout: string;
+  stderr: string;
+  truncated: boolean;
+  duration_ms: number | null;
+  started_at: string;
+  completed_at: string | null;
+  error: string;
+}
+
+export interface GitChange {
+  path: string;
+  index: string;
+  worktree: string;
+  status: string;
+  original_path?: string;
+}
+
+export interface GitSummary {
+  is_repo: boolean;
+  branch?: string;
+  upstream?: string;
+  ahead?: number;
+  behind?: number;
+  detached?: boolean;
+  changed: GitChange[];
+  changed_count?: number;
+  truncated?: boolean;
+  clean?: boolean;
+  sandboxed?: boolean;
+  sandbox_backend?: string;
+}
+
+export interface GitBranch {
+  name: string;
+  current: boolean;
+}
+
+export interface GitBranches {
+  branches: GitBranch[];
+  current: string;
+  sandboxed?: boolean;
+  sandbox_backend?: string;
+}
+
+export interface CommitMessageDraft {
+  message: string;
+  provider_configured: boolean;
+  note?: string;
+}
+
+export interface BackupInfo {
+  name: string;
+  kind: string;
+  created_at: string;
+  bytes: number;
+}
+
+export interface DataStatus {
+  data_dir: string;
+  data_dir_overridden: boolean;
+  database_path: string;
+  database_bytes: number;
+  directories: Record<string, string>;
+  schema_version: number;
+  latest_schema_version: number;
+  journal_mode: string;
+  foreign_keys: boolean;
+  integrity: string;
+  restore: string | null;
+  migrated_from: string | null;
+  notices: string[];
+  log_file: string | null;
+  backups: BackupInfo[];
+  last_backup_at: string | null;
+  backup_policy: { daily: number; weekly: number; event: number };
+  counts: Record<string, number>;
+}
+
 export interface HealthRead {
   status: string;
   version: string;
@@ -198,6 +374,112 @@ export interface TaskDetail {
   usage: UsageRow[];
     verification?: VerificationSummary;
   verifications?: VerificationRun[];
+}
+
+export type ProviderGroup = "cloud" | "local";
+export type ProviderKeySource = "keyring" | "file" | "env" | null;
+
+export interface ProviderCard {
+  id: string;
+  label: string;
+  group: ProviderGroup;
+  kind: string;
+  description: string;
+  key_url: string;
+  how_to: string;
+  requires_key: boolean;
+  base_url: string;
+  base_url_editable: boolean;
+  has_key: boolean;
+  key_hint: string | null;
+  key_source: ProviderKeySource;
+  key_read_only: boolean;
+  model: string;
+  default_model: string;
+  models: string[];
+  status: string;
+  last_error: string | null;
+  checked_at: string | null;
+  active: boolean;
+  options: { server_fallbacks?: boolean };
+}
+
+export interface ProviderKeyStorage {
+  backend: string;
+  detail: string;
+}
+
+export interface ProviderCardsRead {
+  active: string;
+  active_model: string;
+  configured: boolean;
+  key_storage: ProviderKeyStorage;
+  providers: ProviderCard[];
+}
+
+export interface ProviderTestRead {
+  ok: boolean;
+  provider: string;
+  latency_ms: number | null;
+  model_count: number;
+  models: string[];
+  error: string;
+  code: string;
+}
+
+export interface ProviderModelsRead {
+  id: string;
+  model: string;
+  models: string[];
+  fetched: boolean;
+  error: string;
+  code: string;
+}
+
+export interface LocalRunner {
+  id: string;
+  label: string;
+  base_url: string;
+  running: boolean;
+  models: string[];
+  latency_ms: number | null;
+  error: string;
+  how_to: string;
+}
+
+export interface ProviderActivation {
+  active: string;
+  model: string;
+  provider: ProviderCard | null;
+}
+
+export interface UserProfile {
+  display_name: string;
+  role: string;
+  experience: string;
+  languages: string[];
+  package_managers: string[];
+  code_style: string;
+  test_framework: string;
+  commit_style: string;
+  tone: string;
+  projects_folder: string;
+}
+
+export interface UserProfileRead extends UserProfile {
+  updated_at: string | null;
+  is_empty: boolean;
+}
+
+export type OnboardingStep = "welcome" | "about_you" | "connect_model" | "first_project" | "safety_check" | "done";
+
+export interface OnboardingRead {
+  step: OnboardingStep;
+  completed: boolean;
+  skipped_steps: string[];
+  updated_at: string | null;
+  profile_empty: boolean;
+  provider_configured: boolean;
 }
 
 export interface SecurityStatusRead {

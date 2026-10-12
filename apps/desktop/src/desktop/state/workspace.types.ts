@@ -62,11 +62,7 @@ export interface Task {
   note: string;
 }
 
-export interface Project {
-  name: string;
-  path: string;
-  opened: string;
-}
+export type { Project } from "../services/agentApi.types";
 
 export type AppScreen =
   | "welcome" | "workspace" | "tasks" | "task" | "btask" | "browser" | "projects" | "memory" | "settings"

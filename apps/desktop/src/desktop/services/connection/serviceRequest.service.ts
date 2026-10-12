@@ -10,10 +10,12 @@ const UNAUTHORIZED_STATUS = 401;
 export class ApiError extends Error {
   code: string;
   status: number;
-  constructor(status: number, code: string, message: string) {
+  data: Record<string, unknown>;
+  constructor(status: number, code: string, message: string, data: Record<string, unknown> = {}) {
     super(message);
     this.status = status;
     this.code = code;
+    this.data = data;
   }
 }
 
@@ -45,7 +47,7 @@ async function readApiError(response: Response): Promise<ApiError> {
   const fallbackCode = response.status === UNAUTHORIZED_STATUS ? "unauthorized" : "http_error";
   const code = typeof body?.code === "string" ? body.code : fallbackCode;
   const detail = typeof body?.detail === "string" ? body.detail : `request failed with ${response.status}`;
-  return new ApiError(response.status, code, detail);
+  return new ApiError(response.status, code, detail, (body as Record<string, unknown>) ?? {});
 }
 
 export async function requestServiceJson<T>(path: string, init?: RequestInit): Promise<T> {
