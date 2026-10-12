@@ -199,3 +199,33 @@ export interface TaskDetail {
     verification?: VerificationSummary;
   verifications?: VerificationRun[];
 }
+
+export interface SecurityStatusRead {
+  platform: string;
+  sandbox: {
+    mode: string;
+    backend: string;
+    active: boolean;
+    reason: string;
+    self_test: {
+      ran: boolean;
+      passed: boolean;
+      read_outside_blocked: boolean;
+      network_blocked: boolean;
+      workspace_write_ok: boolean;
+      detail: string;
+    };
+    network_policy: { default: string; commands: string; verification: string };
+    limits: { max_processes: number; cpu_seconds: number; memory_mb: number; open_files: number };
+    protected: string[];
+  };
+  service_token: {
+    required: boolean;
+    source: string;
+    dev_token_accepted: boolean;
+    token_file_written: boolean;
+    host_check: string;
+    json_required_for_changes: boolean;
+  };
+  browser: { blocked: string[]; schemes: string[] };
+}

@@ -1,16 +1,11 @@
-import type { ApprovalRead, BackendTask, BudgetReport, ChatMessage, HealthRead, JournalRow, MemoryHistoryRow, MemoryRow, ModelEntry, ProviderRead, RouteRead, TaskDetail, ToolRead, UsageRow, VerifyRead } from "./agentApi.types";
+import {
+  SERVICE_BASE_URL, buildEventStreamUrl, fetchFromService, loadServiceImageAsObjectUrl, requestServiceJson,
+} from "./connection/serviceRequest.service";
+import type { ApprovalRead, BackendTask, BudgetReport, ChatMessage, HealthRead, JournalRow, MemoryHistoryRow, MemoryRow, ModelEntry, ProviderRead, RouteRead, SecurityStatusRead, TaskDetail, ToolRead, UsageRow, VerifyRead } from "./agentApi.types";
 
-export class ApiError extends Error {
-  code: string;
-  status: number;
-  constructor(status: number, code: string, message: string) {
-    super(message);
-    this.status = status;
-    this.code = code;
-  }
-}
+export { ApiError, isServiceAuthError } from "./connection/serviceRequest.service";
 
-const BASE = (import.meta.env.VITE_OWL_SERVICE_URL as string | undefined) ?? "http://127.0.0.1:8000";
+const request = requestServiceJson;
 
 function query(params: Record<string, string>): string {
   const q = Object.entries(params).filter(([, v]) => v).map(
@@ -19,27 +14,8 @@ function query(params: Record<string, string>): string {
   return q.length ? `?${q.join("&")}` : "";
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-  });
-  if (!res.ok) {
-    let code = "http_error";
-    let detail = `request failed with ${res.status}`;
-    try {
-      const body = await res.json();
-      if (typeof body?.detail === "string") detail = body.detail;
-      if (typeof body?.code === "string") code = body.code;
-    } catch {
-          }
-    throw new ApiError(res.status, code, detail);
-  }
-  return res.json() as Promise<T>;
-}
-
 export const agentApi = {
-  baseUrl: BASE,
+  baseUrl: SERVICE_BASE_URL,
   health: (signal?: AbortSignal) => request<HealthRead>("/health", { signal }),
   provider: () => request<ProviderRead>("/provider"),
   verifyProvider: () =>
@@ -93,9 +69,10 @@ export const agentApi = {
     request<{ url: string; title: string; text: string; screenshot?: string }>(
       "/browser/capture", { method: "POST", body: JSON.stringify({ url, width, shot }) },
     ),
-  shotUrl: (name: string) => `${BASE}/shots/${name}`,
+  loadScreenshotObjectUrl: (name: string) => loadServiceImageAsObjectUrl(`/shots/${encodeURIComponent(name)}`),
+  securityStatus: () => request<SecurityStatusRead>("/security/status"),
   usage: (taskId = "") => request<UsageRow[]>(`/usage${taskId ? `?task_id=${encodeURIComponent(taskId)}` : ""}`),
-    streamChat: (
+  streamChat: (
     messages: ChatMessage[],
     model: string,
     onDelta: (text: string) => void,
@@ -105,14 +82,14 @@ export const agentApi = {
     const ctrl = new AbortController();
     void (async () => {
       try {
-        const res = await fetch(`${BASE}/chat/stream`, {
+        const res = await fetchFromService("/chat/stream", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ messages, model }),
           signal: ctrl.signal,
         });
         if (!res.ok || !res.body) {
-          onError("http_error", `Chat stream failed (${res.status}).`);
+          if (res.status === 401) onError("unauthorized", "Can't authenticate with the local OWL service.");
+          else onError("http_error", `Chat stream failed (${res.status}).`);
           return;
         }
         const reader = res.body.getReader();
@@ -175,27 +152,37 @@ export const agentApi = {
       method: "POST",
       body: JSON.stringify({ approved, by }),
     }),
-    events: (taskId: string, onEvent: (type: string, data: unknown) => void): (() => void) => {
-    const source = new EventSource(`${BASE}/tasks/${taskId}/events`);
-    source.onmessage = () => {};
-    source.addEventListener("snapshot", () => {});
-    const types = [
-      "task.started", "task.progress", "message", "approval.requested",
-      "approval.decided", "task.awaiting_approval", "task.paused", "task.resumed",
-      "task.cancelled", "task.completed", "task.failed", "snapshot",
-      "step.started", "step.done", "step.failed", "step.added", "tool.result", "checkpoint.created",
-      "verification.started", "verification.requirement.started",
-      "verification.requirement.completed", "verification.failed", "verification.completed",
-    ];
-    for (const t of types) {
-      source.addEventListener(t, (e) => {
-        try {
-          onEvent(t, JSON.parse((e as MessageEvent).data));
-        } catch {
-          onEvent(t, {});
-        }
-      });
-    }
-    return () => source.close();
+  events: (taskId: string, onEvent: (type: string, data: unknown) => void): (() => void) => {
+    let source: EventSource | null = null;
+    let closed = false;
+    void buildEventStreamUrl(`/tasks/${taskId}/events`).then((streamUrl) => {
+      if (closed) return;
+      source = new EventSource(streamUrl);
+      listenToTaskEvents(source, onEvent);
+    });
+    return () => {
+      closed = true;
+      source?.close();
+    };
   },
 };
+
+function listenToTaskEvents(source: EventSource, onEvent: (type: string, data: unknown) => void): void {
+  const types = [
+    "task.started", "task.progress", "message", "approval.requested",
+    "approval.decided", "task.awaiting_approval", "task.paused", "task.resumed",
+    "task.cancelled", "task.completed", "task.failed", "snapshot",
+    "step.started", "step.done", "step.failed", "step.added", "tool.result", "checkpoint.created",
+    "verification.started", "verification.requirement.started",
+    "verification.requirement.completed", "verification.failed", "verification.completed",
+  ];
+  for (const t of types) {
+    source.addEventListener(t, (e) => {
+      try {
+        onEvent(t, JSON.parse((e as MessageEvent).data));
+      } catch {
+        onEvent(t, {});
+      }
+    });
+  }
+}
