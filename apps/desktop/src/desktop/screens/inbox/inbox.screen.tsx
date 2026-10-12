@@ -3,8 +3,7 @@ import { ArrowClockwise, ArrowSquareOut, CheckCircle, FolderSimple, Tray } from 
 import { useAppStore } from "../../state/app.store";
 import { usePendingApprovalsStore } from "../../state/pendingApprovals.store";
 import { agentApi } from "../../services/agentApi.service";
-import { SAMPLE_SAVE_NOTICE_SHORT } from "../../services/samples/sampleMode.helper";
-import { SampleDataBanner, EmptyState, PageHeader } from "../../../shared/components/pageLayout.component";
+import { EmptyState, PageHeader } from "../../../shared/components/pageLayout.component";
 import { StatusTag } from "../../../shared/components/statusTag.component";
 import { Tag } from "../../../shared/components/tag.component";
 import { isTypingInTextField } from "../../../shared/helpers/keyboard.helper";
@@ -14,13 +13,12 @@ import type { InboxItem, InboxView } from "./inboxApproval.types";
 import "./inbox.style.css";
 
 export function InboxScreen() {
-  const decideLocalApproval = useAppStore((s) => s.decideApproval);
   const showNotice = useAppStore((s) => s.showNotice);
   const askForConfirmation = useAppStore((s) => s.askForConfirmation);
   const openBackendTask = useAppStore((s) => s.openBackendTask);
   const goToScreen = useAppStore((s) => s.goToScreen);
   const markDecided = usePendingApprovalsStore((s) => s.markDecided);
-  const { groups, loading, isSampleData, loadApprovals } = useInboxApprovals();
+  const { groups, loading, failure, loadApprovals } = useInboxApprovals();
   const [view, setView] = useState<InboxView>("pending");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [now, setNow] = useState(() => Date.now());
@@ -40,25 +38,14 @@ export function InboxScreen() {
 
   const decideItem = useCallback(async (item: InboxItem, approved: boolean) => {
     const verb = approved ? "Approved" : "Rejected";
-    if (item.source === "local") {
-      decideLocalApproval(item.id, approved ? "approved" : "rejected");
-      showNotice(`${verb}: ${item.title}`);
-      return;
-    }
-    const markItemDecided = () => markDecided(item.key, { status: approved ? "approved" : "rejected", at: new Date().toISOString() });
-    if (isSampleData) {
-      markItemDecided();
-      showNotice(SAMPLE_SAVE_NOTICE_SHORT);
-      return;
-    }
     try {
       await agentApi.decide(item.taskId, item.id, approved);
-      markItemDecided();
+      markDecided(item.key, { status: approved ? "approved" : "rejected", at: new Date().toISOString() });
       showNotice(`${verb}: ${item.title}`);
     } catch (e) {
       showNotice(e instanceof Error ? `Couldn't record the decision: ${e.message}` : "Couldn't reach the OWL service");
     }
-  }, [isSampleData, decideLocalApproval, showNotice, markDecided]);
+  }, [showNotice, markDecided]);
 
   const lowRiskPending = allItems.filter((item) => item.status === "pending" && item.risk === "Low");
   const approveAllLowRisk = () => askForConfirmation({
@@ -100,7 +87,13 @@ export function InboxScreen() {
           </button>
         </>}
       />
-      {isSampleData && <SampleDataBanner what="the inbox" onRetry={() => void loadApprovals()} />}
+      {!loading && failure !== "none" && (
+        <EmptyState icon={Tray} hue={failure === "unauthorized" ? "orange" : "red"}
+          title={failure === "unauthorized" ? "Sign in to the local service" : "OWL's local service isn't running"}
+          body={failure === "unauthorized" ? "The desktop app couldn't authenticate with the local service." : "Start the OWL service to see what's waiting on you."}>
+          <button className="btn btn-secondary" onClick={() => void loadApprovals()}><ArrowClockwise size={15} /> Retry</button>
+        </EmptyState>
+      )}
 
       <div className="x-toolbar">
         <div className="seg" role="tablist" aria-label="Show approvals">
@@ -121,7 +114,7 @@ export function InboxScreen() {
         </div>
       )}
 
-      {!loading && visibleGroups.length === 0 && (
+      {!loading && failure === "none" && visibleGroups.length === 0 && (
         <EmptyState icon={CheckCircle} hue="green" title={view === "decided" ? "No decisions yet" : "You're all caught up"}
           body={view === "decided"
             ? "Approvals you accept or reject show up here with who decided and when."

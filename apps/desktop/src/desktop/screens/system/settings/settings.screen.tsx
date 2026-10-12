@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bell, FolderOpen, GearSix, GitBranch, Info, Keyboard, LockKey, Plugs, ShieldCheck, SlidersHorizontal, Sparkle, UserCircle, Wrench, type Icon } from "@phosphor-icons/react";
+import { Bell, Database, FolderOpen, GearSix, GitBranch, Info, Keyboard, LockKey, Plugs, ShieldCheck, SlidersHorizontal, Sparkle, UserCircle, Wrench, type Icon } from "@phosphor-icons/react";
 import { useAppStore } from "../../../state/app.store";
 import { agentApi } from "../../../services/agentApi.service";
 import { PageHeader } from "../../../../shared/components/pageLayout.component";
@@ -16,9 +16,10 @@ import { ProfileSettingsSection } from "./profile/profileSettings.section";
 import { GitSettingsSection, PermissionSettingsSection, SecuritySettingsSection, WorkspaceSettingsSection } from "./sections/accessSettings.section";
 import { GeneralSettingsSection, KeyboardSettingsSection, NotificationSettingsSection } from "./sections/generalSettings.section";
 import { AboutSettingsSection, AdvancedSettingsSection } from "./sections/systemSettings.section";
+import { DataSettingsSection } from "./data/dataSettings.section";
 import "./settings.style.css";
 
-type SettingsSectionName = "General" | "Profile" | "AI providers" | "AI" | "Permissions" | "Workspaces" | "Security" | "Git" | "Notifications" | "Keyboard" | "Advanced" | "About";
+type SettingsSectionName = "General" | "Profile" | "AI providers" | "AI" | "Permissions" | "Workspaces" | "Security" | "Git" | "Data" | "Notifications" | "Keyboard" | "Advanced" | "About";
 
 const SETTINGS_SECTIONS: { name: SettingsSectionName; icon: Icon }[] = [
   { name: "General", icon: SlidersHorizontal },
@@ -29,6 +30,7 @@ const SETTINGS_SECTIONS: { name: SettingsSectionName; icon: Icon }[] = [
   { name: "Workspaces", icon: FolderOpen },
   { name: "Security", icon: LockKey },
   { name: "Git", icon: GitBranch },
+  { name: "Data", icon: Database },
   { name: "Notifications", icon: Bell },
   { name: "Keyboard", icon: Keyboard },
   { name: "Advanced", icon: Wrench },
@@ -108,6 +110,7 @@ export function SettingsScreen() {
           )}
           {activeSection === "Security" && <SecuritySettingsSection />}
           {activeSection === "Git" && <GitSettingsSection prefs={prefs} onTogglePref={togglePref} />}
+          {activeSection === "Data" && <DataSettingsSection />}
           {activeSection === "Notifications" && (
             <NotificationSettingsSection notificationPermission={notificationPermission} onAskPermission={() => void askNotificationPermission()}
               prefs={prefs} onTogglePref={togglePref} />

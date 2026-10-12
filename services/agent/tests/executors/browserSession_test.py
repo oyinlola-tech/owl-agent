@@ -5,6 +5,7 @@ import pytest
 from supports.browserLocalSite_support import INJECTION_TEXT, PAGE_MARKER, serve_local_site
 
 from app.executors.browserExecutor_executor import BrowserError
+from app.executors.browsing.browserExtraction_executor import extract_from_page
 from app.executors.browsing.browserInteraction_executor import (
     click_target,
     hover_target,
@@ -13,7 +14,6 @@ from app.executors.browsing.browserInteraction_executor import (
     type_into_target,
     wait_on_page,
 )
-from app.executors.browsing.browserExtraction_executor import extract_from_page
 from app.executors.browsing.browserSessionPool_executor import BrowserSessionManager
 
 
@@ -64,14 +64,17 @@ def test_interactions_type_select_click_navigates(tmp_path):
                 await type_into_target(session, 'input[name="q"]', "hello owl")
                 assert await session.page.input_value('input[name="q"]') == "hello owl"
                 await select_option_in_target(session, 'select[name="pick"]', "b")
-                assert await session.page.eval_on_selector("select[name=pick]", "e => e.value") == "b"
+                assert (
+                    await session.page.eval_on_selector("select[name=pick]", "e => e.value") == "b"
+                )
                 await scroll_page(session, "bottom")
                 await hover_target(session, "h1")
                 waited = await wait_on_page(session, "h1", 1000)
                 assert waited["action"] == "wait"
                 clicked = await click_target(session, 'a[href="/other"]')
                 assert clicked["url"].endswith("/other")
-                assert clicked["external_navigation"]["to"].startswith("http://127.0.0.1")
+                # Same-origin navigation is not flagged as an external-origin hop.
+                assert "external_navigation" not in clicked
                 title = await extract_from_page(session, "title")
                 assert title["title"] == "Other Page"
             finally:
