@@ -12,11 +12,27 @@ import { join, resolve } from "node:path";
 import process from "node:process";
 // @ts-expect-error type error without @types/node package
 import { fileURLToPath } from "node:url";
+import { QA_SERVICE_TOKEN } from "./qaServiceToken.support";
 
 const SERVICE_DIR = resolve(fileURLToPath(new URL(".", import.meta.url)), "..", "..", "..", "..", "services", "agent");
 const APP_FACTORIES = ["app:create_app", "app.main:create_app"];
 
 export type RunningService = { url: string; stop: () => void };
+
+function buildServiceEnvironment(dataDir: string, trustedOrigin: string): Record<string, string> {
+  const inherited: Record<string, string> = { ...process.env };
+  for (const name of ["OWL_SERVICE_TOKEN", "OWL_SERVICE_TOKEN_FILE", "OWL_REQUIRE_TOKEN"]) delete inherited[name];
+  return {
+    ...inherited,
+    PYTHONPATH: SERVICE_DIR,
+    OWL_DB_PATH: join(dataDir, "owl.db"),
+    OWL_TRUSTED_ORIGINS: trustedOrigin,
+    OWL_DEV_TOKEN: QA_SERVICE_TOKEN,
+    NVIDIA_API_KEY: "",
+    OWL_PROVIDER: "mock",
+    OWL_SECRET_STORE: "file",
+  };
+}
 
 function findServicePython(): string | undefined {
   if (process.env.OWL_QA_PYTHON) return process.env.OWL_QA_PYTHON;
@@ -56,13 +72,7 @@ export async function startRealService(trustedOrigin: string): Promise<RunningSe
     const port = await findFreePort();
     const child = spawn(python, ["-m", "uvicorn", "--factory", factory, "--host", "127.0.0.1", "--port", String(port)], {
       cwd: dataDir,
-      env: {
-        ...process.env,
-        PYTHONPATH: SERVICE_DIR,
-        OWL_DB_PATH: join(dataDir, "owl.db"),
-        OWL_TRUSTED_ORIGINS: trustedOrigin,
-        NVIDIA_API_KEY: "",
-      },
+      env: buildServiceEnvironment(dataDir, trustedOrigin),
       stdio: "ignore",
     });
     const url = `http://127.0.0.1:${port}`;

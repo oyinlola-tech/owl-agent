@@ -26,3 +26,13 @@ test("every settings section opens", async ({ page }) => {
     }
   }
 });
+
+test("security settings explain that live status needs the service when it is offline", async ({ page }) => {
+  await openApp(page, "/app/settings");
+  await page.getByRole("navigation", { name: "Settings sections" }).getByRole("button", { name: "Security", exact: true }).click();
+  await expect(page.getByRole("heading", { level: 4, name: "Command sandbox", exact: true })).toBeVisible();
+  await expect(page.getByText(/The OWL service is offline, so the live sandbox and token status can't be shown/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 4, name: "Never read or sent", exact: true })).toBeVisible();
+  await expect(page.getByText("Can't authenticate with the local OWL service")).toBeHidden();
+});
