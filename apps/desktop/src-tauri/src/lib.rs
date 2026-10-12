@@ -46,13 +46,14 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(RunningServiceProcess::empty())
         .manage(ServiceTokenState::empty())
         .invoke_handler(tauri::generate_handler![get_service_token])
         .setup(|app| {
             listen_for_deep_links(app);
             if let Err(error) = start_service_sidecar_unless_port_is_taken(app.handle()) {
-                eprintln!("owl-service: could not start ({error}); the app will run in sample-data mode");
+                eprintln!("owl-service: could not start ({error}); the app will show its offline state until the service is reachable");
             }
             Ok(())
         })
