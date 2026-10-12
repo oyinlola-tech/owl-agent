@@ -25,13 +25,16 @@ async def submit_form(session: IsolatedBrowserSession, target: str) -> dict:
     before = origin_of(session.page.url)
     locator = resolve_locator(session.page, target)
     tag = await locator.evaluate("e => e.tagName.toLowerCase()")
-    if tag == "form":
-        await locator.evaluate("f => (f.requestSubmit ? f.requestSubmit() : f.submit())")
-    else:
-        await locator.click(timeout=ACTION_TIMEOUT_MS)
     try:
-        await session.page.wait_for_load_state("domcontentloaded", timeout=ACTION_TIMEOUT_MS)
+        async with session.page.expect_navigation(
+            timeout=ACTION_TIMEOUT_MS, wait_until="domcontentloaded"
+        ):
+            if tag == "form":
+                await locator.evaluate("f => (f.requestSubmit ? f.requestSubmit() : f.submit())")
+            else:
+                await locator.click(timeout=ACTION_TIMEOUT_MS)
     except Exception:
+        # A submit that updates the page in place triggers no top-level navigation.
         pass
     # Security: the destination after a submit is re-checked against the SSRF guard.
     await asyncio.to_thread(
