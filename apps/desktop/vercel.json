@@ -2,6 +2,43 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "VITE_OWL_WEBSITE_ONLY=1 npm run build",
   "outputDirectory": "dist",
+  "redirects": [
+    {
+      "source": "/download/windows",
+      "destination": "https://github.com/oyinlola-tech/owl-agent/releases/latest/download/OWL-Agent-Setup-x64.exe",
+      "statusCode": 302
+    },
+    {
+      "source": "/download/windows-msi",
+      "destination": "https://github.com/oyinlola-tech/owl-agent/releases/latest/download/OWL-Agent-x64.msi",
+      "statusCode": 302
+    },
+    {
+      "source": "/download/mac",
+      "destination": "https://github.com/oyinlola-tech/owl-agent/releases/latest/download/OWL-Agent-macOS-AppleSilicon.dmg",
+      "statusCode": 302
+    },
+    {
+      "source": "/download/mac-intel",
+      "destination": "https://github.com/oyinlola-tech/owl-agent/releases/latest/download/OWL-Agent-macOS-Intel.dmg",
+      "statusCode": 302
+    },
+    {
+      "source": "/download/linux",
+      "destination": "https://github.com/oyinlola-tech/owl-agent/releases/latest/download/OWL-Agent-Linux-x64.AppImage",
+      "statusCode": 302
+    },
+    {
+      "source": "/download/linux-deb",
+      "destination": "https://github.com/oyinlola-tech/owl-agent/releases/latest/download/OWL-Agent-Linux-x64.deb",
+      "statusCode": 302
+    },
+    {
+      "source": "/download/linux-rpm",
+      "destination": "https://github.com/oyinlola-tech/owl-agent/releases/latest/download/OWL-Agent-Linux-x64.rpm",
+      "statusCode": 302
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",

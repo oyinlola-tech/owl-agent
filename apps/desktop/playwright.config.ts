@@ -3,6 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 import { existsSync } from "node:fs";
 // @ts-expect-error type error without @types/node package
 import process from "node:process";
+import { QA_SERVICE_TOKEN } from "./qa/support/qaServiceToken.support";
 
 const QA_PORT = 5212;
 const OFFLINE_SERVICE_URL = "http://127.0.0.1:1";
@@ -35,6 +36,6 @@ export default defineConfig({
     url: `http://localhost:${QA_PORT}/app`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
-    env: { VITE_OWL_SERVICE_URL: OFFLINE_SERVICE_URL },
+    env: { VITE_OWL_SERVICE_URL: OFFLINE_SERVICE_URL, VITE_OWL_DEV_TOKEN: QA_SERVICE_TOKEN },
   },
 });
