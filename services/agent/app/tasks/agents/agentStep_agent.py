@@ -83,7 +83,11 @@ class AgentStepMixin:
                 {
                     "role": "user",
                     "content": self.build_next_action_prompt(
-                        self.read_task_objective(task_id), step_title, observations, workspace
+                        self.read_task_objective(task_id),
+                        step_title,
+                        observations,
+                        workspace,
+                        self.knowledge_for_task(task_id),
                     ),
                 }
             ],

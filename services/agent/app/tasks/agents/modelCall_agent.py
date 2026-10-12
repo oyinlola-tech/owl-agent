@@ -9,6 +9,9 @@ from ...llms.providers.providerError_provider import (
     InvalidCredentialsError,
     ModelNotAvailableError,
     ProviderNetworkError,
+    ProviderNotConfiguredError,
+    ProviderRefusalError,
+    ProviderRequestRejectedError,
     ProviderTimeoutError,
     QuotaExceededError,
     RateLimitedError,
@@ -33,7 +36,14 @@ class ModelCallMixin:
             start = time.monotonic()
             try:
                 text = await self.provider.complete(messages, model)
-            except (InvalidCredentialsError, ModelNotAvailableError, QuotaExceededError) as exc:
+            except (
+                InvalidCredentialsError,
+                ModelNotAvailableError,
+                QuotaExceededError,
+                ProviderNotConfiguredError,
+                ProviderRefusalError,
+                ProviderRequestRejectedError,
+            ) as exc:
                 self.record_failed_model_attempt(task_id, model, purpose, messages, str(exc))
                 raise TaskBlockedError(f"provider refused: {exc}") from exc
             except RateLimitedError as exc:

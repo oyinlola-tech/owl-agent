@@ -85,7 +85,22 @@ class ToolApprovalMixin:
             title = "Commit changes"
         elif tool_name == "git_push":
             risk, kind = Risk.HIGH, ApprovalKind.PRIVILEGED
-            title = "Push to remote"
+            title = "Force push to remote" if args.get("force") else "Push to remote"
+        elif tool_name == "git_create_branch":
+            risk = Risk.LOW
+            title = "Create branch"
+        elif tool_name == "git_checkout":
+            risk = Risk.LOW
+            title = "Switch branch"
+        elif tool_name == "git_merge":
+            risk = Risk.MEDIUM
+            title = "Merge branch"
+        elif tool_name == "git_delete_branch":
+            risk = Risk.HIGH if args.get("force") else Risk.MEDIUM
+            title = "Delete branch"
+        elif tool_name == "git_pull":
+            risk = Risk.MEDIUM
+            title = "Pull from remote"
         await self.create_approval_request(
             task_id,
             ApprovalRequest(

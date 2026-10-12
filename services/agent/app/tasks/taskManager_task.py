@@ -10,9 +10,12 @@ from ..llms.modelRegistry_llm import ModelRegistry
 from ..llms.modelRouter_llm import ModelRouter
 from ..llms.providers.baseProvider_provider import ModelProvider
 from ..llms.usageRecorder_llm import UsageRecorder
+from ..memories.promptKnowledge_memory import PromptKnowledgeBuilder
 from ..memories.sqliteMemoryStore_memory import SqliteMemoryStore
+from ..memories.userProfile_memory import UserProfileStore
 from .actions.toolApproval_action import ToolApprovalMixin
 from .actions.toolExecution_action import ToolExecutionMixin
+from .agents.agentKnowledge_agent import AgentKnowledgeMixin
 from .agents.agentPrompt_agent import AgentPromptMixin
 from .agents.agentRun_agent import AgentRunMixin
 from .agents.agentStep_agent import AgentStepMixin
@@ -34,6 +37,7 @@ class TaskManager(
     TaskApprovalMixin,
     TaskCheckpointMixin,
     AgentPromptMixin,
+    AgentKnowledgeMixin,
     ModelCallMixin,
     AgentRunMixin,
     AgentStepMixin,
@@ -76,6 +80,8 @@ class TaskManager(
         self.provider = provider
         self.registry = registry
         self.memory = memory
+        self.knowledge = PromptKnowledgeBuilder(conn, memory, UserProfileStore(conn))
+        self.task_knowledge: dict[str, str] = {}
         self.usage = usage
         self.step_delay = step_delay
         self.router = ModelRouter(

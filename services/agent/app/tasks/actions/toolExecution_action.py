@@ -173,6 +173,7 @@ class ToolExecutionMixin:
             "task_id": task_id,
             "exec": self.command_executor,
             "browser": self.browser_inspector,
+            "provider": self.provider,
             "approval": approval,
         }
         return await handler(ctx, validated)

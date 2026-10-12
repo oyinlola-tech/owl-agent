@@ -18,7 +18,18 @@ from ...schemas.approval_schema import (
     Risk,
 )
 
-COMMAND_ACTIONS = {"exec_run", "git_commit", "git_push", "verify_run"}
+COMMAND_ACTIONS = {
+    "exec_run",
+    "git_commit",
+    "git_push",
+    "git_create_branch",
+    "git_checkout",
+    "git_merge",
+    "git_delete_branch",
+    "git_pull",
+    "verify_run",
+}
+NETWORK_ACTIONS = {"git_push", "git_pull"}
 
 
 class TaskApprovalMixin:
@@ -94,9 +105,9 @@ class TaskApprovalMixin:
         # from the request, and the approval text must say so before the user decides.
         title, reason = payload.title, payload.reason
         argv = [str(a) for a in list(payload.args.get("argv", []))]
-        network = (payload.action == "exec_run" and command_needs_network(argv)) or (
-            payload.action == "git_push"
-        )
+        network = (
+            payload.action == "exec_run" and command_needs_network(argv)
+        ) or payload.action in NETWORK_ACTIONS
         if network and "with network access" not in title:
             title = f"{title} with network access"[:200]
         if payload.action not in COMMAND_ACTIONS:

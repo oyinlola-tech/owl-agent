@@ -11,6 +11,7 @@ from ..taskRule_task import TaskBlockedError, TaskLimitReachedError
 class AgentRunMixin:
     async def run_task_from_plan_to_finish(self, task_id: str) -> None:
         started_at = time.monotonic()
+        self.forget_cached_knowledge(task_id)
         observations: list[str] = [
             f"{tc['tool']} -> {tc['output_excerpt'][:300]}"
             for tc in self.recent_tool_history(task_id)
@@ -37,6 +38,7 @@ class AgentRunMixin:
             await self.work_and_verify_until_settled(
                 task_id, model, workspace, observations, started_at
             )
+            await self.suggest_memories_after_task(task_id)
         except TaskLimitReachedError as exc:
             self.pause_task_with_note(task_id, str(exc))
             await self.bus.publish_event(task_id, "task.paused", {"reason": str(exc)})
@@ -57,6 +59,7 @@ class AgentRunMixin:
             raise
         finally:
             self.running_workers.pop(task_id, None)
+            self.forget_cached_knowledge(task_id)
 
     async def plan_task_steps(self, task_id: str, row, model: str, budgets) -> None:
         parts = self.build_context_parts(task_id, row["prompt"])
@@ -73,6 +76,7 @@ class AgentRunMixin:
         )
         if report.over_budget or report.should_compress:
             parts, _ = budgets.drop_low_priority_parts_to_fit(model, parts)
+            self.drop_knowledge_when_over_budget(task_id, parts)
             kept, saved = self.compressor.remove_duplicate_parts(parts)
             if saved:
                 self.compressor.record_compression(
@@ -85,7 +89,14 @@ class AgentRunMixin:
                 )
         plan_text = await self.call_model_with_retries(
             task_id,
-            [{"role": "user", "content": self.build_plan_prompt(row["prompt"])}],
+            [
+                {
+                    "role": "user",
+                    "content": self.build_plan_prompt(
+                        row["prompt"], self.knowledge_for_task(task_id)
+                    ),
+                }
+            ],
             model,
             "plan",
         )
