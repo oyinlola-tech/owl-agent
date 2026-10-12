@@ -7,7 +7,8 @@ SECRET_TEXT_PATTERNS = (
         r"(?i)\b(api[_-]?key|api[_-]?secret|password|passwd|pwd|secret|token)\b\s*[:=]\s*\S+"
     ),
     re.compile(
-        r"\b(nvapi-[A-Za-z0-9_-]{8,}|sk-[A-Za-z0-9]{8,}|gh[pousr]_[A-Za-z0-9_]{8,}|xox[bpas]-[A-Za-z0-9-]{8,})"
+        r"\b(nvapi-[A-Za-z0-9_-]{8,}|sk-[A-Za-z0-9_-]{8,}|gh[pousr]_[A-Za-z0-9_]{8,}|xox[bpas]-[A-Za-z0-9-]{8,}"
+        r"|gsk_[A-Za-z0-9]{8,}|xai-[A-Za-z0-9]{8,}|AIza[0-9A-Za-z_-]{20,})"
     ),
     re.compile(r"(?i)-----BEGIN [A-Z ]*PRIVATE KEY-----"),
 )
