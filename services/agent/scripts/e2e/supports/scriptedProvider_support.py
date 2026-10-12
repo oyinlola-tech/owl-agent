@@ -66,6 +66,7 @@ def build_e2e_settings(db: str, workspace: str, **extra) -> Settings:
         workspaces=workspace,
         _env_file=None,
         nvidia_api_key="",
+        provider="mock",
         verify_timeout=120.0,
         service_token=E2E_SERVICE_TOKEN,
     )
