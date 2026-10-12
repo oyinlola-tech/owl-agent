@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -10,6 +11,7 @@ from fastapi.responses import JSONResponse
 
 from ..events.eventBus_event import EventBus
 from ..executors.browserExecutor_executor import BrowserPageInspector
+from ..executors.browsing.browserSessionPool_executor import BrowserSessionManager
 from ..executors.commandExecutor_executor import CommandExecutor
 from ..guards.approvalBinding_guard import DefaultApprovalPolicy
 from ..guards.workspaceAccess_guard import WorkspaceAccessGuard
@@ -99,6 +101,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         browser=BrowserPageInspector(
             storage.layout.screenshots_dir, allow_loopback=settings.browser_allow_loopback
         ),
+        browser_sessions=BrowserSessionManager(
+            storage.layout.screenshots_dir,
+            os.path.join(storage.layout.root, "browser-downloads"),
+            allow_loopback=settings.browser_allow_loopback,
+        ),
     )
     provider_setup.attach_routers([router, manager.router])
     policy = DefaultApprovalPolicy()
@@ -112,6 +119,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def close_manager_on_shutdown(app: FastAPI):  # type: ignore[no-untyped-def]
         yield
         manager.is_shutting_down = True
+        # Security: every browser session and its process is killed when the service stops.
+        await manager.browser_sessions.shutdown()
 
     app.router.lifespan_context = close_manager_on_shutdown
     app.state.manager = manager
@@ -126,6 +135,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.auth = manager.workspace_guard
     app.state.exec_service = manager.command_executor
     app.state.browser = manager.browser_inspector
+    app.state.browser_sessions = manager.browser_sessions
     app.state.shots_dir = storage.layout.screenshots_dir
     app.state.local_storage = storage
     app.state.sandbox = sandbox

@@ -6,6 +6,7 @@ from ..events.eventBus_event import EventBus
 from ..llms.providers.baseProvider_provider import ModelProvider
 from ..routes.browserCapture_route import create_browser_capture_router
 from ..routes.contextBudget_route import create_context_budget_router
+from ..routes.documents.documentExtract_route import create_project_document_router
 from ..routes.knowledge.knowledgeSearch_route import create_knowledge_router
 from ..routes.memory_route import create_memory_router
 from ..routes.profiles.userProfile_route import create_user_profile_router
@@ -65,3 +66,4 @@ def include_all_routers(
     app.include_router(create_project_git_commit_router())
     app.include_router(create_project_security_router(app))
     app.include_router(create_knowledge_router())
+    app.include_router(create_project_document_router())

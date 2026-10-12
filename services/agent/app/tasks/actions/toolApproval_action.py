@@ -101,6 +101,16 @@ class ToolApprovalMixin:
         elif tool_name == "git_pull":
             risk = Risk.MEDIUM
             title = "Pull from remote"
+        elif tool_name == "browser_submit":
+            risk, kind = Risk.HIGH, ApprovalKind.PRIVILEGED
+            title = "Submit a web form"
+        elif tool_name == "browser_upload":
+            risk, kind = Risk.HIGH, ApprovalKind.PRIVILEGED
+            files = [str(args.get("path", ""))]
+            title = "Upload a file to a web page"
+        elif tool_name == "browser_download":
+            risk = Risk.MEDIUM
+            title = "Download a file from the web"
         await self.create_approval_request(
             task_id,
             ApprovalRequest(

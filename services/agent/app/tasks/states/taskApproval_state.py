@@ -29,7 +29,13 @@ COMMAND_ACTIONS = {
     "git_pull",
     "verify_run",
 }
-NETWORK_ACTIONS = {"git_push", "git_pull"}
+NETWORK_ACTIONS = {
+    "git_push",
+    "git_pull",
+    "browser_submit",
+    "browser_upload",
+    "browser_download",
+}
 
 
 class TaskApprovalMixin:

@@ -68,6 +68,12 @@ class TaskLifecycleMixin:
                 await worker
             except asyncio.CancelledError:
                 pass
+        if self.browser_sessions is not None:
+            # Security: cancelling a task closes its browser session immediately.
+            try:
+                await self.browser_sessions.close_task_sessions(task_id)
+            except Exception:
+                pass
         row = self.fetch_task_row(task_id)
         assert row is not None
         if row["status"] not in TERMINAL:

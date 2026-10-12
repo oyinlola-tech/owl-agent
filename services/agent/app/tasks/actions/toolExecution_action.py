@@ -173,6 +173,8 @@ class ToolExecutionMixin:
             "task_id": task_id,
             "exec": self.command_executor,
             "browser": self.browser_inspector,
+            "browser_sessions": self.browser_sessions,
+            "bus": self.bus,
             "provider": self.provider,
             "approval": approval,
         }

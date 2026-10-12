@@ -74,6 +74,7 @@ class TaskManager(
         auth=None,
         exec_service=None,
         browser=None,
+        browser_sessions=None,
     ) -> None:
         self.conn = conn
         self.bus = bus
@@ -102,6 +103,7 @@ class TaskManager(
         self.workspace_guard = auth
         self.command_executor = exec_service
         self.browser_inspector = browser
+        self.browser_sessions = browser_sessions
         self.policy = DefaultApprovalPolicy()
         self.compressor = ContextCompressor()
         self.is_shutting_down = False

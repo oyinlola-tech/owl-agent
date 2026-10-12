@@ -117,3 +117,75 @@ class KnowledgeSearchArguments(BaseModel):
     types: list[str] = Field(default_factory=list, max_length=10)
     project: str = Field(default="", max_length=256)
     limit: int = Field(default=10, ge=1, le=50)
+
+
+class BrowserSessionOpenArguments(BaseModel):
+    url: str = Field(min_length=1, max_length=2000)
+
+
+class BrowserNavigateArguments(BaseModel):
+    session_id: str = Field(default="", max_length=64)
+    url: str = Field(min_length=1, max_length=2000)
+
+
+class BrowserSessionRefArguments(BaseModel):
+    session_id: str = Field(default="", max_length=64)
+
+
+class BrowserExtractArguments(BaseModel):
+    session_id: str = Field(default="", max_length=64)
+    what: str = Field(default="text", pattern="^(text|links|forms|structure|title)$")
+
+
+class BrowserClickArguments(BaseModel):
+    session_id: str = Field(default="", max_length=64)
+    target: str = Field(min_length=1, max_length=400)
+
+
+class BrowserTypeArguments(BaseModel):
+    session_id: str = Field(default="", max_length=64)
+    target: str = Field(min_length=1, max_length=400)
+    text: str = Field(default="", max_length=20000)
+
+
+class BrowserSelectArguments(BaseModel):
+    session_id: str = Field(default="", max_length=64)
+    target: str = Field(min_length=1, max_length=400)
+    value: str = Field(default="", max_length=2000)
+
+
+class BrowserScrollArguments(BaseModel):
+    session_id: str = Field(default="", max_length=64)
+    direction: str = Field(default="down", pattern="^(up|down|top|bottom)$")
+
+
+class BrowserHoverArguments(BaseModel):
+    session_id: str = Field(default="", max_length=64)
+    target: str = Field(min_length=1, max_length=400)
+
+
+class BrowserWaitArguments(BaseModel):
+    session_id: str = Field(default="", max_length=64)
+    selector: str = Field(default="", max_length=400)
+    timeout_ms: int = Field(default=2000, ge=0, le=30000)
+
+
+class BrowserSubmitArguments(BaseModel):
+    session_id: str = Field(default="", max_length=64)
+    target: str = Field(min_length=1, max_length=400)
+
+
+class BrowserUploadArguments(BaseModel):
+    session_id: str = Field(default="", max_length=64)
+    target: str = Field(min_length=1, max_length=400)
+    path: str = Field(min_length=1, max_length=2000)
+
+
+class BrowserDownloadArguments(BaseModel):
+    session_id: str = Field(default="", max_length=64)
+    target: str = Field(default="", max_length=400)
+
+
+class DocumentReadArguments(BaseModel):
+    path: str = Field(min_length=1, max_length=4096)
+    max_chars: int | None = Field(default=None, ge=1, le=1_000_000)

@@ -60,6 +60,12 @@ class AgentRunMixin:
         finally:
             self.running_workers.pop(task_id, None)
             self.forget_cached_knowledge(task_id)
+            # Security: a browser session is tied to its task and never outlives it.
+            if self.browser_sessions is not None:
+                try:
+                    await self.browser_sessions.close_task_sessions(task_id)
+                except Exception:
+                    pass
 
     async def plan_task_steps(self, task_id: str, row, model: str, budgets) -> None:
         parts = self.build_context_parts(task_id, row["prompt"])
