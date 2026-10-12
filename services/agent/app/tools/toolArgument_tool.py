@@ -51,7 +51,7 @@ class CommandRunArguments(BaseModel):
 
 class GitReadArguments(BaseModel):
     path: str = "."
-    ref: str = Field(default="", max_length=120)
+    ref: str = Field(default="", max_length=120, pattern=r"^([^-\s\x00][^\s\x00]*)?$")
     limit: int = Field(default=10, ge=1, le=50)
 
 
@@ -64,9 +64,56 @@ class GitCommitArguments(BaseModel):
 class GitPushArguments(BaseModel):
     path: str = "."
     remote: str = Field(default="origin", max_length=60)
+    force: bool = False
+
+
+REF_NAME_PATTERN = r"^[^-\s\x00][^\s\x00]*$"
+
+
+class GitBranchNameArguments(BaseModel):
+    path: str = "."
+    name: str = Field(min_length=1, max_length=200, pattern=REF_NAME_PATTERN)
+
+
+class GitDeleteBranchArguments(BaseModel):
+    path: str = "."
+    name: str = Field(min_length=1, max_length=200, pattern=REF_NAME_PATTERN)
+    force: bool = False
+
+
+class GitCheckoutArguments(BaseModel):
+    path: str = "."
+    ref: str = Field(min_length=1, max_length=200, pattern=REF_NAME_PATTERN)
+    confirm_discard: bool = False
+
+
+class GitMergeArguments(BaseModel):
+    path: str = "."
+    ref: str = Field(min_length=1, max_length=200, pattern=REF_NAME_PATTERN)
+
+
+class GitPullArguments(BaseModel):
+    path: str = "."
+    remote: str = Field(default="origin", max_length=60)
+
+
+class GitCommitMessageArguments(BaseModel):
+    path: str = "."
 
 
 class BrowserOpenArguments(BaseModel):
     url: str = Field(min_length=1, max_length=2000)
     width: int = Field(default=1440)
     shot: bool = False
+
+
+class SecurityScanArguments(BaseModel):
+    path: str = "."
+    tools: list[str] = Field(default_factory=list, max_length=20)
+
+
+class KnowledgeSearchArguments(BaseModel):
+    query: str = Field(min_length=1, max_length=400)
+    types: list[str] = Field(default_factory=list, max_length=10)
+    project: str = Field(default="", max_length=256)
+    limit: int = Field(default=10, ge=1, le=50)

@@ -34,4 +34,4 @@ async def commit_listed_files(ctx: dict, args: GitCommitArguments) -> dict:
 async def push_to_remote(ctx: dict, args: GitPushArguments) -> dict:
     # Security: network is granted only by an approval recorded as "with network access".
     network = bool((ctx.get("approval") or {}).get("network"))
-    return await push_git_branch(ctx["exec"], args.path, args.remote, network)
+    return await push_git_branch(ctx["exec"], args.path, args.remote, network, args.force)

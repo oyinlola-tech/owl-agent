@@ -17,6 +17,14 @@ from .handlers.fileReading_handler import (
     search_workspace_files,
     stat_workspace_path,
 )
+from .handlers.git.gitBranchCommand_handler import (
+    checkout_ref,
+    create_branch,
+    delete_branch,
+    merge_ref,
+    pull_remote,
+)
+from .handlers.git.gitMessage_handler import generate_commit_message
 from .handlers.gitCommand_handler import (
     commit_listed_files,
     push_to_remote,
@@ -25,6 +33,7 @@ from .handlers.gitCommand_handler import (
     show_git_log,
     show_git_status,
 )
+from .handlers.security.securityScan_handler import run_security_scan
 from .handlers.terminalCommand_handler import run_terminal_command
 from .toolArgument_tool import (
     BrowserOpenArguments,
@@ -36,9 +45,16 @@ from .toolArgument_tool import (
     FileReadArguments,
     FileSearchArguments,
     FileStatArguments,
+    GitBranchNameArguments,
+    GitCheckoutArguments,
     GitCommitArguments,
+    GitCommitMessageArguments,
+    GitDeleteBranchArguments,
+    GitMergeArguments,
+    GitPullArguments,
     GitPushArguments,
     GitReadArguments,
+    SecurityScanArguments,
 )
 
 
@@ -131,6 +147,63 @@ register_tool(
         "browser_open",
         "Open a URL and read title and text. Read-only.",
         BrowserOpenArguments,
+        False,
+    )
+)
+
+TOOL_HANDLERS.update(
+    {
+        "git_create_branch": create_branch,
+        "git_checkout": checkout_ref,
+        "git_merge": merge_ref,
+        "git_delete_branch": delete_branch,
+        "git_pull": pull_remote,
+        "git_generate_commit_message": generate_commit_message,
+    }
+)
+
+register_tool(
+    ToolDefinition(
+        "git_create_branch", "Create a branch. Requires approval.", GitBranchNameArguments, True
+    )
+)
+register_tool(
+    ToolDefinition(
+        "git_checkout", "Switch to a branch or ref. Requires approval.", GitCheckoutArguments, True
+    )
+)
+register_tool(
+    ToolDefinition(
+        "git_merge", "Merge a ref into HEAD. Requires approval.", GitMergeArguments, True
+    )
+)
+register_tool(
+    ToolDefinition(
+        "git_delete_branch",
+        "Delete a branch. Requires approval.",
+        GitDeleteBranchArguments,
+        True,
+    )
+)
+register_tool(
+    ToolDefinition("git_pull", "Pull from a remote. Requires approval.", GitPullArguments, True)
+)
+register_tool(
+    ToolDefinition(
+        "git_generate_commit_message",
+        "Draft a commit message from the diff. Read-only.",
+        GitCommitMessageArguments,
+        False,
+    )
+)
+
+TOOL_HANDLERS.update({"security_scan": run_security_scan})
+
+register_tool(
+    ToolDefinition(
+        "security_scan",
+        "Run installed security scanners over the open project and read findings. Read-only.",
+        SecurityScanArguments,
         False,
     )
 )
