@@ -13,9 +13,9 @@ type TaskListView = "table" | "board";
 const TASK_VIEW_STORAGE_KEY = "owl-tasks-view";
 
 export function TaskListScreen() {
-  const openBackendTask = useAppStore((s) => s.openBackendTask);
+  const startNewTask = useAppStore((s) => s.startNewTask);
   const goToScreen = useAppStore((s) => s.goToScreen);
-  const setCreateProjectOpen = useAppStore((s) => s.setCreateProjectOpen);
+  const openBackendTask = useAppStore((s) => s.openBackendTask);
   const [query, setQuery] = useState("");
   const [view, setView] = useState<TaskListView>(() => (readStoredValue(TASK_VIEW_STORAGE_KEY) === "board" ? "board" : "table"));
   const selectView = (nextView: TaskListView) => { setView(nextView); writeStoredValue(TASK_VIEW_STORAGE_KEY, nextView); };
@@ -34,7 +34,7 @@ export function TaskListScreen() {
         lede="Running and past agent work. Open a task for its plan, changes, commands, and test results."
         actions={<>
           <button className="btn btn-secondary" onClick={() => goToScreen("inbox")}><ShieldWarning size={15} /> Approvals</button>
-          <button className="btn btn-primary" onClick={() => setCreateProjectOpen(true)}><Plus size={15} weight="bold" /> Open a project</button>
+          <button className="btn btn-primary" onClick={startNewTask}><Plus size={15} weight="bold" /> New task</button>
         </>}
       />
       <div className="pg-toolbar">

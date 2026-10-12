@@ -8,10 +8,10 @@ export function LocalTaskDetailScreen() {
   return (
     <div className="page pg-detail">
       <button className="btn btn-ghost btn-sm pg-back" onClick={() => goToScreen("tasks")}><ArrowLeft size={14} /> All tasks</button>
-      <PageHeader icon={ListChecks} hue="blue" title="Task" />
+      <PageHeader icon={ListChecks} hue="blue" title="Task detail" />
       <EmptyState icon={ListChecks} hue="blue" title="Open a task from the list"
-        body="Every task OWL runs is stored by the local service with its plan, changes, commands, and verification. Pick one from the Tasks list to see its detail.">
-        <button className="btn btn-primary" onClick={() => goToScreen("tasks")}>Go to Tasks</button>
+        body="Every task now lives with the local service. Pick one from the Tasks page to see its plan, changes, commands, and verification.">
+        <button className="btn btn-primary" onClick={() => goToScreen("tasks")}>Go to tasks</button>
         <button className="btn btn-secondary" onClick={() => goToScreen("workspace")}>Open workspace</button>
       </EmptyState>
     </div>

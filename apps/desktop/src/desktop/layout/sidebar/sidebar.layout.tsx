@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CaretDown, CaretRight, MagnifyingGlass, Plus, Rows, SidebarSimple, Sparkle } from "@phosphor-icons/react";
 import { useAppStore } from "../../state/app.store";
+import { agentApi } from "../../services/agentApi.service";
+import type { BackendTask } from "../../services/agentApi.types";
 import type { AppScreen } from "../../state/workspace.types";
 import { usePendingApprovalCount } from "../../state/pendingApprovals.store";
 import { hueForStatus } from "../../../shared/components/statusTag.component";
@@ -16,15 +18,22 @@ const RECENT_TASKS_STORAGE_KEY = "owl-sb-recent";
 export function Sidebar() {
   const screen = useAppStore((s) => s.screen);
   const goToScreen = useAppStore((s) => s.goToScreen);
-  const tasks = useAppStore((s) => s.tasks);
-  const openTask = useAppStore((s) => s.openTask);
-  const openTaskId = useAppStore((s) => s.openTaskId);
+  const openBackendTask = useAppStore((s) => s.openBackendTask);
+  const openBackendTaskId = useAppStore((s) => s.openBackendTaskId);
   const setCommandPaletteOpen = useAppStore((s) => s.setCommandPaletteOpen);
   const setAskOwlOpen = useAppStore((s) => s.setAskOwlOpen);
   const startNewTask = useAppStore((s) => s.startNewTask);
   const pendingCount = usePendingApprovalCount();
   const { collapsed, narrow, toggle } = useSidebarCollapsed();
+  const [recentTasks, setRecentTasks] = useState<BackendTask[]>([]);
   const [recentOpen, setRecentOpen] = useState(() => readStoredValue(RECENT_TASKS_STORAGE_KEY) !== "0");
+  useEffect(() => {
+    let alive = true;
+    agentApi.backendTasks()
+      .then((tasks) => { if (alive) setRecentTasks([...tasks].sort((a, b) => b.updated_at.localeCompare(a.updated_at))); })
+      .catch(() => { if (alive) setRecentTasks([]); });
+    return () => { alive = false; };
+  }, [screen]);
   const toggleRecentTasks = () => {
     const next = !recentOpen;
     setRecentOpen(next);
@@ -84,12 +93,13 @@ export function Sidebar() {
           </button>
           <button className="sb-mini" onClick={() => goToScreen("tasks")} aria-label="All tasks" title="All tasks"><Rows size={13} /></button>
         </div>
-        {recentOpen && tasks.slice(0, 5).map((task) => (
-          <button key={task.id} className={`sb-item sb-task${screen === "task" && openTaskId === task.id ? " on" : ""}`}
-            onClick={() => openTask(task.id)} title={`${task.name} · ${task.status}`}>
+        {recentOpen && recentTasks.length === 0 && <div className="sb-empty sb-hide">No tasks yet</div>}
+        {recentOpen && recentTasks.slice(0, 5).map((task) => (
+          <button key={task.id} className={`sb-item sb-task${screen === "btask" && openBackendTaskId === task.id ? " on" : ""}`}
+            onClick={() => openBackendTask(task.id)} title={`${task.prompt} · ${task.status}`}>
             <span className={`live-dot${task.status === "running" ? " pulse" : ""}`} style={{ color: `var(--${hueForStatus(task.status)})`, width: 7, height: 7 }} />
-            <span className="sb-label">{task.name}</span>
-            <span className="sb-meta">{task.project}</span>
+            <span className="sb-label">{task.prompt}</span>
+            <span className="sb-meta">{task.project || "No project"}</span>
           </button>
         ))}
       </div>
