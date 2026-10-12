@@ -30,7 +30,7 @@ pub fn read_deep_link_target(url: &Url) -> DeepLinkTarget {
     }
     // Security: only screens from the fixed allowlist are used, so link text never reaches the webview.
     match ALLOWED_SCREENS.iter().find(|screen| **screen == requested) {
-        Some(screen) => DeepLinkTarget::Screen(*screen),
+        Some(screen) => DeepLinkTarget::Screen(screen),
         None => DeepLinkTarget::FocusOnly,
     }
 }
