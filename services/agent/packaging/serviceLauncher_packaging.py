@@ -6,7 +6,6 @@ import socket
 import sys
 import threading
 
-APP_IDENTIFIER = "com.oyinlola.owl-agent"
 LOOPBACK_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
 EXIT_CODE_PORT_IN_USE = 3
@@ -17,15 +16,12 @@ DESKTOP_WEBVIEW_ORIGINS = (
 )
 
 
-def find_os_app_data_dir() -> str:
-    home = os.path.expanduser("~")
-    if sys.platform == "win32":
-        base = os.environ.get("APPDATA") or os.path.join(home, "AppData", "Roaming")
-    elif sys.platform == "darwin":
-        base = os.path.join(home, "Library", "Application Support")
-    else:
-        base = os.environ.get("XDG_DATA_HOME") or os.path.join(home, ".local", "share")
-    return os.path.join(base, APP_IDENTIFIER)
+def find_service_data_dir(requested: str) -> str:
+    if requested:
+        os.environ["OWL_DATA_DIR"] = os.path.abspath(os.path.expanduser(requested))
+    from app.settings.dataDirectory_setting import resolve_data_layout
+
+    return resolve_data_layout().root
 
 
 def read_command_line_options(argv: list[str]) -> argparse.Namespace:
@@ -55,9 +51,9 @@ def merge_desktop_origins_into_trusted_origins() -> None:
 
 
 def prepare_service_environment(data_dir: str) -> None:
-    os.makedirs(data_dir, exist_ok=True)
+    os.makedirs(data_dir, mode=0o700, exist_ok=True)
     os.chdir(data_dir)
-    os.environ.setdefault("OWL_DB_PATH", os.path.join(data_dir, "owl.db"))
+    os.environ["OWL_DATA_DIR"] = data_dir
     merge_desktop_origins_into_trusted_origins()
 
 
@@ -85,7 +81,7 @@ def load_create_app_function():
 
 def run_service_until_stopped(argv: list[str]) -> int:
     options = read_command_line_options(argv)
-    data_dir = os.path.abspath(options.data_dir or find_os_app_data_dir())
+    data_dir = find_service_data_dir(options.data_dir)
     if is_port_already_taken(options.port):
         print(f"owl-service: port {options.port} is already in use", file=sys.stderr)
         return EXIT_CODE_PORT_IN_USE

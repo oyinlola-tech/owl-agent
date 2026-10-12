@@ -83,6 +83,10 @@ def build_pyinstaller_arguments(binary_name: str, output_dir: Path) -> list[str]
         "app",
         "--collect-submodules",
         "uvicorn",
+        "--collect-submodules",
+        "keyring",
+        "--copy-metadata",
+        "keyring",
     ]
     for module_name in MODULES_NOT_NEEDED_IN_BINARY:
         arguments += ["--exclude-module", module_name]
@@ -91,7 +95,9 @@ def build_pyinstaller_arguments(binary_name: str, output_dir: Path) -> list[str]
 
 def build_service_binary() -> Path:
     options = read_build_options()
-    target = options.target or read_target_triple_from_rustc() or guess_target_triple_from_platform()
+    target = (
+        options.target or read_target_triple_from_rustc() or guess_target_triple_from_platform()
+    )
     binary_name = f"{SIDECAR_BASE_NAME}-{target}"
     output_dir = Path(options.out).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
