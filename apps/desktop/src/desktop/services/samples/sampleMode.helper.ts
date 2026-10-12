@@ -1,7 +1,10 @@
+import { isServiceAuthError } from "../connection/serviceRequest.service";
+
 export async function loadWithSampleFallback<T>(call: Promise<T>, sample: T): Promise<{ data: T; demo: boolean }> {
   try {
     return { data: await call, demo: false };
-  } catch {
+  } catch (error) {
+    if (isServiceAuthError(error)) throw error;
     return { data: sample, demo: true };
   }
 }

@@ -41,7 +41,7 @@ let timer: ReturnType<typeof setInterval> | null = null;
 
 export function startPendingApprovalsSync() {
   if (timer) return;
-  const run = () => { void usePendingApprovalsStore.getState().refresh(); };
+  const run = () => { usePendingApprovalsStore.getState().refresh().catch(() => {}); };
   run();
   timer = setInterval(run, 15000);
   window.addEventListener("focus", run);
