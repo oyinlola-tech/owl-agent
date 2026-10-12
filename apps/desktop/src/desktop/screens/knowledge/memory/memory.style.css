@@ -1,0 +1,49 @@
+.pg-mem { display: grid; gap: 0; border-radius: var(--r-lg); background: var(--bg); box-shadow: var(--e1); overflow: hidden; }
+.pg-memrow { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 12px; padding: 14px 16px; align-items: start; }
+.pg-memrow + .pg-memrow { border-top: 1px solid var(--line); }
+.pg-memrow:hover { background: var(--bg-hover); }
+.pg-memrow.off { opacity: 0.5; }
+.pg-memrow .tags { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 6px; }
+.pg-memrow p { margin: 0; font-size: 14px; color: var(--ink); overflow-wrap: anywhere; }
+.pg-memrow .acts { display: flex; gap: 2px; opacity: 0; transition: opacity var(--dur) var(--ease); }
+.pg-memrow:hover .acts, .pg-memrow:focus-within .acts { opacity: 1; }
+.pg-memedit { display: flex; gap: 6px; flex-wrap: wrap; }
+.pg-memedit .input { flex: 1 1 220px; }
+@media (hover: none) {
+  .pg-memrow .acts { opacity: 1; }
+}
+@media (max-width: 560px) {
+  .pg-memrow { grid-template-columns: minmax(0, 1fr); }
+  .pg-memrow > .tile { display: none; }
+  .pg-memrow .acts { opacity: 1; }
+}
+.pg-memhist li b { font-size: 13px; }
+.pg-memhist li small { font-size: 14px; color: var(--ink-2); }
+.pg-cats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0 0 20px; }
+.pg-cats button { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border: none; border-radius: var(--r-lg);
+  background: var(--bg); box-shadow: var(--e1); text-align: left; cursor: pointer; transition: box-shadow var(--dur) var(--ease); }
+.pg-cats button:hover { box-shadow: var(--e2); }
+.pg-cats button.on { box-shadow: 0 0 0 1.5px var(--accent), var(--e1); }
+.pg-cats b { display: block; font-size: 20px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--ink); }
+.pg-cats span > span { display: block; font-size: 14px; font-weight: 500; color: var(--ink); }
+.pg-cats small { display: block; font-size: 12.5px; color: var(--ink-3); line-height: 1.35; margin-top: 2px; }
+.pg-projfilter { max-width: 180px !important; flex: 0 1 180px !important; }
+.pg-newmem { padding: 14px 16px; display: grid; gap: 12px; margin: 0 0 16px; animation: pop-in 200ms var(--ease) both; }
+.pg-newmem-head { display: flex; gap: 10px; align-items: center; }
+.pg-newmem-head b { font-size: 15px; }
+.pg-newmem-head .grow, .pg-newmem-foot .grow { flex: 1; }
+.pg-newmem .seg { justify-self: start; max-width: 100%; overflow-x: auto; }
+.pg-textarea { height: auto; padding: 10px 12px; resize: vertical; line-height: 1.5; font-size: 14px; }
+.pg-newmem-foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pg-check { display: inline-flex; gap: 6px; align-items: center; font-size: 13.5px; color: var(--ink-2); cursor: pointer; }
+.pg-check input { accent-color: var(--accent); width: 15px; height: 15px; }
+.pg-memrow .tags { align-items: center; }
+@media (max-width: 860px) {
+  .pg-cats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .pg-projfilter { max-width: none !important; flex: none !important; }
+}
+@media (max-width: 560px) {
+  .pg-cats small { display: none; }
+}

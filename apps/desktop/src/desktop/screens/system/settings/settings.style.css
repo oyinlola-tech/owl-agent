@@ -1,0 +1,31 @@
+.pg-settings { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 32px; align-items: start; }
+.pg-setnav { display: grid; gap: 1px; position: sticky; top: 0; }
+.pg-setnav button { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border: none; border-radius: var(--r-sm);
+  background: none; font-size: 14px; color: var(--ink-3); cursor: pointer; text-align: left; }
+.pg-setnav button:hover { background: var(--bg-hover); color: var(--ink); }
+.pg-setnav button.on { background: var(--bg-active); color: var(--ink); font-weight: 500; }
+.pg-setgroup { padding: 4px 18px; margin-bottom: 16px; }
+.pg-setgroup > h4 { margin: 12px 0 2px; font-size: 12.5px; font-weight: 600; color: var(--ink-3); }
+.pg-setgroup .callout { margin: 0 0 14px; }
+@media (max-width: 860px) {
+  .pg-settings { grid-template-columns: 1fr; gap: 16px; }
+  .pg-setnav { position: static; display: flex; overflow-x: auto; gap: 4px; }
+  .pg-setnav button { flex: none; }
+}
+.pg-link { border: none; background: none; padding: 0; color: var(--accent); cursor: pointer; font-size: inherit;
+  display: inline-flex; align-items: center; gap: 4px; }
+.pg-link:hover { text-decoration: underline; }
+.pg-setbody { animation: fade-up 200ms var(--ease) both; min-width: 0; }
+.pg-select { width: auto; min-width: 200px; max-width: 280px; height: 32px; font-size: 13px; }
+.pg-rootrow { display: flex; gap: 10px; align-items: center; color: var(--ink-2); }
+.pg-rootrow svg { color: var(--ink-3); flex: none; }
+.pg-chips { display: flex; gap: 6px; flex-wrap: wrap; padding-top: 10px; }
+.pg-keys { display: inline-flex; gap: 4px; }
+.pg-setgroup + .callout { margin-top: -4px; }
+.pg-about-head { display: flex; gap: 14px; align-items: center; padding: 14px 0 6px; }
+.pg-about-head b { display: block; font-family: var(--serif); font-size: 24px; font-weight: 560; letter-spacing: -0.01em; }
+.pg-about-head span { font-size: 13.5px; color: var(--ink-3); }
+.pg-about-links { display: flex; gap: 8px; flex-wrap: wrap; padding: 6px 0 16px; }
+@media (max-width: 720px) {
+  .pg-select { width: 100%; max-width: none; }
+}

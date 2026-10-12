@@ -1,0 +1,49 @@
+.pop { position: fixed; z-index: 350; min-width: 240px; max-width: calc(100vw - 16px); max-height: calc(100dvh - 24px); overflow-y: auto;
+  background: var(--bg); border-radius: var(--r-lg); box-shadow: var(--e2); padding: 6px; animation: pop-in 150ms var(--ease) both;
+  font-size: 14px; color: var(--ink); }
+.pop-title { font-size: 11.5px; font-weight: 600; color: var(--ink-4); padding: 6px 8px 4px; }
+.pop-item { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 5px 8px; border: none; border-radius: var(--r-sm);
+  background: none; color: var(--ink-2); font-size: 14px; cursor: pointer; text-align: left; }
+.pop-item > svg { color: var(--ink-3); flex: none; }
+.pop-item:hover, .pop-item:focus-visible { background: var(--bg-hover); color: var(--ink); outline: none; }
+.pop-item.on { color: var(--ink); }
+.pop-main { flex: 1; min-width: 0; display: grid; line-height: 1.3; }
+.pop-main b { font-weight: 500; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pop-main small { font-size: 11.5px; color: var(--ink-4); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pop-aside { font-size: 12px; color: var(--ink-4); white-space: nowrap; }
+.pop-check { color: var(--accent); flex: none; }
+.pop-sep { height: 1px; background: var(--line); margin: 5px 2px; }
+.pop-proj-ico { width: 24px; height: 24px; flex: none; border-radius: var(--r-sm); display: grid; place-items: center; font-size: 12px; font-weight: 700;
+  background: var(--bg-wash); color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line); }
+.pop-projects { width: 300px; }
+.pop-account { width: 290px; }
+.pop-user { display: flex; align-items: center; gap: 10px; padding: 8px; }
+.pop-theme { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px; font-size: 13.5px; color: var(--ink-3); }
+.pop-theme .seg button { height: 24px; padding: 0 8px; font-size: 12px; gap: 4px; }
+.pop-foot { display: flex; align-items: center; gap: 7px; padding: 8px 8px 4px; font-size: 11.5px; color: var(--ink-4); }
+.pop-item kbd { margin-left: auto; }
+.pop-inbox { width: 380px; padding: 0; }
+.pop-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px 10px; border-bottom: 1px solid var(--line); }
+.pop-head b { font-size: 14px; font-weight: 600; }
+.pop-list { display: grid; gap: 8px; padding: 10px; max-height: 360px; overflow-y: auto; }
+.pop-appr { display: grid; gap: 8px; padding: 10px; border-radius: var(--r-md);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--orange) 30%, transparent); background: var(--bg); }
+.pop-appr-head { display: flex; gap: 10px; align-items: flex-start; }
+.pop-appr-head .pop-main small { white-space: normal; font-size: 12.5px; color: var(--ink-3); }
+.pop-cmd { display: block; padding: 6px 9px; border-radius: var(--r-sm); background: #191919; color: #e8e6e1; font-size: 12px; overflow-x: auto; white-space: pre; }
+.pop-files { font-size: 11.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pop-appr-acts { display: flex; align-items: center; gap: 6px; }
+.pop-empty { display: grid; justify-items: center; text-align: center; gap: 4px; padding: 28px 20px; }
+.pop-empty b { font-size: 14px; font-weight: 600; margin-top: 6px; }
+.pop-empty span:last-child { font-size: 13px; color: var(--ink-3); max-width: 30ch; }
+.pop-footlink { width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; height: 38px; border: none;
+  border-top: 1px solid var(--line); background: var(--bg-wash); color: var(--ink-2); font-size: 13px; font-weight: 500; cursor: pointer;
+  border-radius: 0 0 var(--r-lg) var(--r-lg); }
+.pop-footlink:hover { color: var(--ink); background: var(--bg-hover); }
+.pop-ctx { width: 300px; }
+.pop-more { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px; border: none; border-radius: var(--r-md);
+  background: none; text-align: left; cursor: pointer; color: var(--ink-3); }
+.pop-more:hover { background: var(--bg-hover); color: var(--ink); }
+.pop-more .pop-main { flex: 1; min-width: 0; display: grid; }
+.pop-more b { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.pop-more small { font-size: 12.5px; color: var(--ink-3); }

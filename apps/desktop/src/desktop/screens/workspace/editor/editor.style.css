@@ -1,0 +1,61 @@
+.codeview { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.ed-tabs { display: flex; height: 36px; background: var(--bg-wash); border-bottom: 1px solid var(--line); overflow-x: auto; flex: none; }
+.ed-tab { display: inline-flex; align-items: center; border-right: 1px solid var(--line); position: relative; flex: none; color: var(--ink-3); }
+.ed-tab > button[role="tab"] { display: inline-flex; align-items: center; gap: 7px; height: 100%; padding: 0 4px 0 14px; border: none;
+  background: none; color: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.ed-tab:hover { color: var(--ink); }
+.ed-tab.on { background: var(--bg); color: var(--ink); }
+.ed-tab.on::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: var(--accent); }
+.ed-tab.on::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: var(--bg); }
+.ed-close { width: 20px; height: 20px; margin: 0 6px 0 2px; border: none; border-radius: var(--r-xs); background: none; color: var(--ink-4);
+  display: grid; place-items: center; cursor: pointer; opacity: 0; }
+.ed-tab:hover .ed-close, .ed-tab.on .ed-close, .ed-close:focus-visible { opacity: 1; }
+.ed-close:hover { background: var(--bg-hover); color: var(--ink); }
+.ed-crumb { padding: 6px 16px; font-size: 11.5px; color: var(--ink-4); border-bottom: 1px solid var(--line); flex: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ed-body { flex: 1; min-height: 320px; position: relative; }
+.ed-body > section, .ed-body > div { height: 100% !important; }
+.ed-skel { padding: 20px 24px; display: grid; gap: 12px; width: 100%; align-self: stretch; }
+.ed-offline { display: flex; flex-direction: column; height: 100%; }
+.ed-offline-note { display: flex; align-items: center; gap: 6px; padding: 6px 16px; font-size: 12px; color: var(--ink-3);
+  background: var(--yellow-bg); border-bottom: 1px solid var(--line); flex: none; }
+.ed-offline .fallback-code { flex: 1; }
+.fallback-code { margin: 0; padding: 14px 0; font-size: 13px; line-height: 1.7; overflow: auto; height: 100%; }
+.fallback-code .ln { display: flex; }
+.fallback-code .ln i { width: 48px; flex: none; text-align: right; padding-right: 16px; color: var(--ink-4); font-style: normal; user-select: none; }
+.changes { max-width: 880px; margin: 0 auto; display: grid; gap: 12px; }
+.changes-head { display: flex; align-items: center; gap: 12px; padding: 4px 2px 6px; }
+.changes-head > div { flex: 1; display: grid; }
+.changes-head b { font-size: 15px; font-weight: 600; }
+.changes-head span { font-size: 12.5px; color: var(--ink-3); }
+.diff { border-radius: var(--r-lg); background: var(--bg); box-shadow: var(--e1); overflow: hidden; transition: opacity var(--dur) var(--ease); animation: fade-up 260ms var(--ease) both; }
+.diff-rejected { opacity: 0.55; }
+.diff-accepted { box-shadow: 0 0 0 1px color-mix(in srgb, var(--green) 45%, transparent), 0 1px 2px rgba(15, 15, 15, 0.04); }
+.diff header { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--line); background: var(--bg-wash); }
+.diff-path { font-size: 12.5px; color: var(--ink-2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.diff-body { font-size: 12.5px; line-height: 1.7; overflow-x: auto; padding: 6px 0; }
+.desk .dl { display: flex; white-space: pre; padding-right: 16px; min-width: max-content; }
+.desk .dl i { width: 36px; flex: none; text-align: center; font-style: normal; user-select: none; }
+.desk .dl.del { background: color-mix(in srgb, var(--red-bg) 75%, transparent); color: var(--red); }
+.desk .dl.add { background: color-mix(in srgb, var(--green-bg) 85%, transparent); color: var(--green); }
+.diff footer { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-top: 1px solid var(--line); }
+.diff-meta { font-size: 12px; color: var(--ink-4); }
+.mb { display: flex; flex-direction: column; gap: 0; border-radius: var(--r-lg); box-shadow: var(--e1); overflow: hidden; background: var(--bg); min-height: 100%; }
+.mb-bar { display: flex; align-items: center; gap: 8px; padding: 7px 10px; background: var(--bg-wash); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.mb-nav { display: inline-flex; gap: 0; }
+.mb-url { flex: 1; min-width: 160px; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: var(--r-sm);
+  background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); font-size: 12.5px; color: var(--ink-2); }
+.mb-url svg { color: var(--green); }
+.mb-stage { flex: 1; padding: 20px; background: var(--bg-sunken); display: flex; justify-content: center; overflow: auto;
+  background-image: radial-gradient(var(--line-2) 1px, transparent 1px); background-size: 16px 16px; }
+.mb-frame { width: 100%; background: var(--bg); border-radius: var(--r-md); box-shadow: var(--e2); overflow: hidden; transition: max-width 260ms var(--ease); align-self: flex-start; }
+.mb-skel { padding: 24px; display: grid; gap: 10px; }
+.mb-skel-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+.mb-skel-grid .skel-line { height: 90px; border-radius: var(--r-md); }
+.mb-page-nav { display: flex; gap: 16px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--ink-3); }
+.mb-page-nav b { color: var(--ink); margin-right: auto; }
+.mb-page-hero { padding: 36px 24px; text-align: center; background: linear-gradient(180deg, var(--green-bg), transparent); }
+.mb-page-hero h3 { margin: 0; font-size: clamp(20px, 3vw, 30px); letter-spacing: -0.02em; }
+.mb-page-hero p { margin: 6px 0 16px; font-size: 13px; color: var(--ink-3); }
+.mb-page-btn { display: inline-block; padding: 8px 14px; border-radius: var(--r-md); background: var(--green); color: #fff; font-size: 13px; font-weight: 500; }
+.mb-page-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; padding: 20px; }
+.mb-page-cards i { height: 96px; border-radius: var(--r-md); background: var(--bg-wash); box-shadow: inset 0 0 0 1px var(--line); }
