@@ -68,12 +68,23 @@ class ModelRegistry:
         return [self.convert_model_row(r) for r in self.conn.execute(query).fetchall()]
 
     def sync_with_live_catalog(self, ids: list[str]) -> dict[str, int]:
-        known = {r["id"] for r in self.list_models()}
+        rows = {r["id"]: r for r in self.list_models()}
+        known = set(rows)
         seen = set(ids)
         added = 0
         for model_id in seen - known:
             self.save_model(model_id, status="available")
             added += 1
+        for model_id in seen & known:
+            row = rows[model_id]
+            if row["status"] == "deprecated":
+                self.save_model(
+                    model_id,
+                    status="available",
+                    context_window=row["context_window"],
+                    context_source=row["context_source"],
+                    capabilities=row["capabilities"],
+                )
         gone = 0
         for model_id in known - seen:
             row = self.get_model(model_id)
