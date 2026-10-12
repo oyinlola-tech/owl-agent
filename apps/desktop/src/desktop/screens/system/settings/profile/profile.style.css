@@ -1,0 +1,36 @@
+.pf-form { display: grid; gap: 16px; padding: 10px 0 16px; }
+.pf-lede { max-width: 60ch; margin: 6px 0 14px; }
+.pf-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.pf-field { display: grid; gap: 7px; min-width: 0; }
+.pf-field .hint { margin: 0; }
+.pf-opt { font-weight: 400; color: var(--ink-4); font-size: 11.5px; }
+
+.pf-chipbox {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 36px;
+  padding: 5px 8px; border-radius: var(--r-md); background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+}
+.pf-chipbox:focus-within { box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft); }
+.pf-chip {
+  display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 4px 0 9px;
+  border-radius: var(--r-sm); background: var(--accent-soft); color: var(--accent);
+  font-size: 13px; font-weight: 500;
+}
+.pf-chip button { border: none; background: none; cursor: pointer; color: inherit; display: inline-flex; padding: 3px; border-radius: 50%; }
+.pf-chip button:hover { background: rgba(35, 131, 226, 0.18); }
+.pf-chip-input { flex: 1; min-width: 120px; border: none; background: none; outline: none; height: 26px; font-size: 14px; color: var(--ink); }
+.pf-chip-input::placeholder { color: var(--ink-4); }
+
+.pf-suggest { display: flex; flex-wrap: wrap; gap: 6px; }
+.pf-suggest-item {
+  border: none; background: var(--bg-sunken); color: var(--ink-3); cursor: pointer;
+  height: 24px; padding: 0 9px; border-radius: var(--r-sm); font-size: 12.5px; font-weight: 500;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.pf-suggest-item:hover { background: var(--bg-active); color: var(--ink); }
+
+.pf-actions { display: flex; justify-content: flex-end; gap: 8px; margin: -4px 0 16px; padding: 0 18px; }
+
+@media (max-width: 640px) {
+  .pf-row { grid-template-columns: 1fr; }
+}

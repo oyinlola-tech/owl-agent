@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bell, FolderOpen, GearSix, GitBranch, Info, Keyboard, LockKey, ShieldCheck, SlidersHorizontal, Sparkle, Wrench, type Icon } from "@phosphor-icons/react";
+import { Bell, FolderOpen, GearSix, GitBranch, Info, Keyboard, LockKey, Plugs, ShieldCheck, SlidersHorizontal, Sparkle, UserCircle, Wrench, type Icon } from "@phosphor-icons/react";
 import { useAppStore } from "../../../state/app.store";
 import { agentApi } from "../../../services/agentApi.service";
 import { PageHeader } from "../../../../shared/components/pageLayout.component";
@@ -11,15 +11,19 @@ import {
 } from "./settingsPrefs.helper";
 import { useProviderVerification, useSettingsServiceInfo } from "./settingsServiceInfo.hook";
 import { AiSettingsSection } from "./sections/aiSettings.section";
+import { AiProvidersSettingsSection } from "./providers/aiProvidersSettings.section";
+import { ProfileSettingsSection } from "./profile/profileSettings.section";
 import { GitSettingsSection, PermissionSettingsSection, SecuritySettingsSection, WorkspaceSettingsSection } from "./sections/accessSettings.section";
 import { GeneralSettingsSection, KeyboardSettingsSection, NotificationSettingsSection } from "./sections/generalSettings.section";
 import { AboutSettingsSection, AdvancedSettingsSection } from "./sections/systemSettings.section";
 import "./settings.style.css";
 
-type SettingsSectionName = "General" | "AI" | "Permissions" | "Workspaces" | "Security" | "Git" | "Notifications" | "Keyboard" | "Advanced" | "About";
+type SettingsSectionName = "General" | "Profile" | "AI providers" | "AI" | "Permissions" | "Workspaces" | "Security" | "Git" | "Notifications" | "Keyboard" | "Advanced" | "About";
 
 const SETTINGS_SECTIONS: { name: SettingsSectionName; icon: Icon }[] = [
   { name: "General", icon: SlidersHorizontal },
+  { name: "Profile", icon: UserCircle },
+  { name: "AI providers", icon: Plugs },
   { name: "AI", icon: Sparkle },
   { name: "Permissions", icon: ShieldCheck },
   { name: "Workspaces", icon: FolderOpen },
@@ -95,6 +99,8 @@ export function SettingsScreen() {
             <GeneralSettingsSection themeMode={themeMode} onPickThemeMode={pickThemeMode} startScreen={startScreen}
               onPickStartScreen={pickStartScreen} prefs={prefs} onTogglePref={togglePref} />
           )}
+          {activeSection === "Profile" && <ProfileSettingsSection />}
+          {activeSection === "AI providers" && <AiProvidersSettingsSection />}
           {activeSection === "AI" && <AiSettingsSection serviceInfo={serviceInfo} verification={verification} />}
           {activeSection === "Permissions" && <PermissionSettingsSection prefs={prefs} onTogglePref={togglePref} />}
           {activeSection === "Workspaces" && (
