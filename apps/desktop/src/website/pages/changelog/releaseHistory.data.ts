@@ -3,7 +3,23 @@ import type { Icon } from "@phosphor-icons/react";
 import type { Hue } from "../../../shared/components/tag.component";
 
 export const RELEASE_HISTORY: { v: string; date: string; title: string; tag?: { hue: Hue; label: string }; groups: { icon: Icon; hue: Hue; h: string; items: string[] }[] }[] = [
-  { v: "0.1.0", date: "October 13, 2026", title: "First release", tag: { hue: "green", label: "Latest" }, groups: [
+  { v: "0.2.0", date: "October 13, 2026", title: "Ten roadmap features", tag: { hue: "blue", label: "Latest" }, groups: [
+    { icon: Desktop, hue: "blue", h: "Workflows", items: [
+      "Git push and pull with confirm gates, ahead/behind counts, and force-push refused.",
+      "Background tasks with OS and title-badge notifications for approvals, completions, and failures.",
+      "Editable plans: reorder, rewrite, add, or delete steps while paused.",
+      "Per-hunk accept in Changes, composed through the existing save and reject paths.",
+      "Project scaffolding from stack picks: starter command, git init, first commit, all approval-gated.",
+      "Voice dictation in the composer with interim streaming.",
+    ] },
+    { icon: Cpu, hue: "green", h: "Insight and sharing", items: [
+      "Cost dashboard: per-model and per-task token tables with a local monthly budget cap.",
+      "Update checker in Help with one-click access to new installers.",
+      "Task bundles: export and import tasks as versioned files.",
+      "Custom command tools through the sandboxed, approval-gated runner.",
+    ] },
+  ] },
+  { v: "0.1.0", date: "October 13, 2026", title: "First release", groups: [
     { icon: Desktop, hue: "blue", h: "Desktop app", items: [
       "Notion-style sidebar with grouped sections, recent tasks, and a collapsible rail.",
       "Screens: Home, Inbox, Workspace, Tasks, Projects, Browser Studio, Memory, Playbooks, Change history, Models & usage, Agent tools, Settings, and Help.",
