@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Lightbulb, WarningCircle } from "@phosphor-icons/react";
 import { agentApi } from "../../services/agentApi.service";
 import type { StackRecommendation } from "../../services/agentApi.types";
+import { ProjectScaffoldPanel } from "./projectScaffold.component";
 
 interface StackAdvisorProps {
   onPick: (stackId: string) => void;
@@ -14,6 +15,7 @@ export function StackAdvisorComponent({ onPick }: StackAdvisorProps) {
   const [rankedBy, setRankedBy] = useState("");
   const [results, setResults] = useState<StackRecommendation[]>([]);
   const [searched, setSearched] = useState(false);
+  const [picked, setPicked] = useState<StackRecommendation | null>(null);
 
   const recommend = () => {
     const text = description.trim();
@@ -62,11 +64,14 @@ export function StackAdvisorComponent({ onPick }: StackAdvisorProps) {
               <div className="nmrow"><b>{rec.stack.name}</b><span className="side-note">fit {rec.fit_score}</span></div>
               <p>{rec.why}</p>
               {rec.tradeoffs.length > 0 && <span className="side-note">Tradeoffs: {rec.tradeoffs.join("; ")}</span>}
-              <div><button className="btn btn-primary btn-sm" onClick={() => onPick(rec.stack.id)}>Pick {rec.stack.name}</button></div>
+              <div><button className="btn btn-primary btn-sm" onClick={() => { setPicked(rec); onPick(rec.stack.id); }}>Pick {rec.stack.name}</button></div>
             </article>
           ))}
         </div>
       ) : null}
+      {picked && (
+        <ProjectScaffoldPanel key={picked.stack.id} recommendation={picked} />
+      )}
     </section>
   );
 }

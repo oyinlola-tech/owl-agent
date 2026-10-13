@@ -15,6 +15,7 @@ from ...guards.approvalBinding_guard import (
 )
 from ...guards.commandRisk_guard import assess_command_risk
 from ...guards.workspaceAccess_guard import WorkspaceError
+from ...tools.customTool_tool import expand_custom_tool_argv
 from ...tools.toolError_tool import ToolError
 from ...tools.toolRegistry_tool import REGISTERED_TOOLS, TOOL_HANDLERS
 from ..taskRule_task import ToolApprovalNeededError, ToolCallFailedError
@@ -34,8 +35,29 @@ class ToolExecutionMixin:
         canon = validated.model_dump(mode="json")
         digest = hash_action_with_arguments(tool_name, canon)
         if tool.requires_approval:
-            if tool_name == "exec_run":
-                verdict, why_refused = assess_command_risk(list(canon.get("argv", [])))
+            if tool_name == "exec_run" or tool_name.startswith("custom-"):
+                if tool_name == "exec_run":
+                    argv = list(canon.get("argv", []))
+                else:
+                    custom_meta = getattr(tool, "metadata", {}).get("custom_tool", {})
+                    template = list(custom_meta.get("argv", []))
+                    try:
+                        argv = expand_custom_tool_argv(template, str(canon.get("args", "")))
+                    except ToolError as exc:
+                        self.record_tool_call(
+                            task_id,
+                            tool_name,
+                            canon,
+                            "",
+                            "error",
+                            None,
+                            f"invalid arguments: {exc}",
+                            digest,
+                        )
+                        raise ToolCallFailedError(
+                            f"invalid arguments for {tool_name}: {exc}"
+                        ) from exc
+                verdict, why_refused = assess_command_risk(argv)
                 if verdict == "refused":
                     self.record_tool_call(
                         task_id,

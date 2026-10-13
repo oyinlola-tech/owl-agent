@@ -1,7 +1,7 @@
 import {
   SERVICE_BASE_URL, buildEventStreamUrl, fetchFromService, loadServiceImageAsObjectUrl, requestServiceJson,
 } from "./connection/serviceRequest.service";
-import type { ApprovalRead, BackendTask, BudgetReport, ChatMessage, CommandRow, CommitMessageDraft, DataStatus, FileSaveResult, GitBranches, GitSummary, HealthRead, JournalRow, LocalRunner, MemoryHistoryRow, MemoryRow, ModelEntry, OnboardingRead, OnboardingStep, Project, ProjectCreateRead, ProjectFileContent, ProjectListRead, ProjectTree, ProviderActivation, ProviderCard, ProviderCardsRead, ProviderModelsRead, ProviderRead, ProviderTestRead, RouteRead, SearchResponse, SecurityStatusRead, StackCatalogRead, StackRecommendRead, TaskDetail, ToolRead, UsageRow, UserProfile, UserProfileRead, VerifyRead } from "./agentApi.types";
+import type { ApprovalRead, BackendTask, BudgetReport, ChatMessage, CommandRow, CommitMessageDraft, DataStatus, FileSaveResult, GitBranches, GitSummary, HealthRead, JournalRow, LocalRunner, MemoryHistoryRow, MemoryRow, ModelEntry, OnboardingRead, OnboardingStep, Project, ProjectCreateRead, ProjectFileContent, ProjectListRead, ProjectTree, ProviderActivation, ProviderCard, ProviderCardsRead, ProviderModelsRead, ProviderRead, ProviderTestRead, RouteRead, SearchResponse, SecurityStatusRead, StackCatalogRead, StackRecommendRead, TaskDetail, ToolRead, CustomToolRead, UsageRow, UserProfile, UserProfileRead, VerifyRead } from "./agentApi.types";
 
 export { ApiError, isServiceAuthError } from "./connection/serviceRequest.service";
 
@@ -55,6 +55,16 @@ export const agentApi = {
   pauseBackendTask: (id: string) => request<BackendTask>(`/tasks/${id}/pause`, { method: "POST" }),
   journal: (taskId: string) => request<JournalRow[]>(`/tasks/${taskId}/journal`),
   tools: () => request<ToolRead[]>("/tools"),
+  customTools: (project = "") =>
+    request<CustomToolRead[]>(`/custom-tools${project ? `?project=${encodeURIComponent(project)}` : ""}`),
+  createCustomTool: (body: { name: string; description: string; argv: string[]; risk: string; project?: string }) =>
+    request<CustomToolRead>("/custom-tools", { method: "POST", body: JSON.stringify(body) }),
+  updateCustomTool: (id: string, body: { description?: string; argv?: string[]; risk?: string; project?: string }) =>
+    request<CustomToolRead>(`/custom-tools/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(body) }),
+  deleteCustomTool: (id: string) =>
+    request<{ deleted: boolean }>(`/custom-tools/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  setCustomToolEnabled: (id: string, enabled: boolean) =>
+    request<Record<string, boolean>>(`/custom-tools/${encodeURIComponent(id)}/${enabled ? "enable" : "disable"}`, { method: "POST" }),
   memoryHistory: () => request<MemoryHistoryRow[]>("/memory/history"),
   cancelBackendTask: (id: string) => request<BackendTask>(`/tasks/${id}/cancel`, { method: "POST" }),
   sendBackendTaskMessage: (id: string, text: string) =>

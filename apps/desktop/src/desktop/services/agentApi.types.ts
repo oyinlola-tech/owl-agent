@@ -284,6 +284,16 @@ export interface ToolRead {
   requires_approval: boolean;
 }
 
+export interface CustomToolRead {
+  id: string;
+  name: string;
+  description: string;
+  argv: string[];
+  risk: "low" | "medium" | "high";
+  project: string;
+  enabled: boolean;
+}
+
 export interface JournalRow {
   id: string;
   path: string;

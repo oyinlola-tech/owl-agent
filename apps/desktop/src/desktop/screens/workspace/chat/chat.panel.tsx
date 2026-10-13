@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Info, PaperPlaneRight, Pause, Play, Plugs, Stack, Stop } from "@phosphor-icons/react";
+import { Check, Info, Microphone, MicrophoneSlash, PaperPlaneRight, Pause, Play, Plugs, Stack, Stop, WarningCircle } from "@phosphor-icons/react";
 import { useAppStore } from "../../../state/app.store";
 import { agentApi } from "../../../services/agentApi.service";
 import { OwlMark } from "../../../../shared/components/owlMark.component";
 import { Tag, type Hue } from "../../../../shared/components/tag.component";
 import { ChatContextPicker } from "./chatContextPicker.component";
+import { combineDraftWithTranscript, useVoiceDictation } from "./useVoiceDictation.hook";
 import "./chat.style.css";
 
 function ChatAvatar({ from }: { from: "you" | "owl" | "sys" }) {
@@ -30,6 +31,31 @@ export function ChatPanel() {
   const goToScreen = useAppStore((s) => s.goToScreen);
   const [models, setModels] = useState<{ id: string; status: string }[]>([]);
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
+  const voiceBaseRef = useRef("");
+  const voiceStreamRef = useRef("");
+  const voice = useVoiceDictation({
+    onInterimText: (text) => {
+      const expected = combineDraftWithTranscript(voiceBaseRef.current, voiceStreamRef.current);
+      const base = draft === expected ? voiceBaseRef.current : draft;
+      voiceBaseRef.current = base;
+      voiceStreamRef.current = text;
+      setDraft(combineDraftWithTranscript(base, text));
+    },
+    onFinalText: (text) => {
+      const next = combineDraftWithTranscript(voiceBaseRef.current, text);
+      voiceBaseRef.current = next;
+      voiceStreamRef.current = "";
+      setDraft(next);
+    },
+  });
+  const handleSend = () => { voice.stop(); sendWorkspaceMessage(); };
+  const handleMicToggle = () => {
+    if (!voice.listening) {
+      voiceBaseRef.current = draft;
+      voiceStreamRef.current = "";
+    }
+    voice.toggle();
+  };
   useEffect(() => {
     let alive = true;
     agentApi.registry()
@@ -113,21 +139,36 @@ export function ChatPanel() {
             <button className="btn btn-secondary btn-sm" onClick={confirmStopTask}><Stop size={13} weight="fill" style={{ color: "var(--red)" }} /> Stop</button>
           )}
         </div>
+        {voice.notice && (
+          <div className="callout red" role="alert" style={{ marginBottom: 8 }}>
+            <WarningCircle size={18} weight="duotone" color="var(--red)" />
+            <span>{voice.notice}</span>
+            <span className="grow" />
+            <button className="btn btn-secondary btn-sm" onClick={voice.dismissNotice}>Dismiss</button>
+          </div>
+        )}
         <div className="composer">
           <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ask OWL to build, fix, or explain…"
             aria-label="Message OWL"
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendWorkspaceMessage(); } }} />
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }} />
           <div className="composer-row">
             <ChatContextPicker />
             <span className="ctx-chip"><Stack size={13} /> {preferredModel === "auto" ? "Auto model" : preferredModel.split("/").pop()}</span>
             <span className="grow" />
             <span className="composer-hint"><kbd>Enter</kbd> to send</span>
+            {voice.listening && <span className="ctx-chip" role="status"><Microphone size={13} /> Listening…</span>}
+            {voice.supported && (
+              <button className="btn btn-secondary btn-sm" onClick={handleMicToggle} aria-label="Dictate message" aria-pressed={voice.listening}
+                title={voice.listening ? "Stop dictation" : "Dictate message"}>
+                {voice.listening ? <MicrophoneSlash size={14} /> : <Microphone size={14} />}
+              </button>
+            )}
             {working ? (
               <button className="btn btn-secondary btn-sm" onClick={confirmStopTask} aria-label="Stop task">
                 <Stop size={13} weight="fill" style={{ color: "var(--red)" }} /> Stop
               </button>
             ) : (
-              <button className="btn btn-primary btn-sm send" disabled={!draft.trim() || !project} onClick={sendWorkspaceMessage} aria-label="Send message">
+              <button className="btn btn-primary btn-sm send" disabled={!draft.trim() || !project} onClick={handleSend} aria-label="Send message">
                 <PaperPlaneRight size={14} weight="fill" /> Send
               </button>
             )}

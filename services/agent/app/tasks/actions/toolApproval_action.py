@@ -101,6 +101,9 @@ class ToolApprovalMixin:
         elif tool_name == "git_pull":
             risk = Risk.MEDIUM
             title = "Pull from remote"
+        elif tool_name.startswith("custom-"):
+            risk, kind = Risk.HIGH, ApprovalKind.COMMAND
+            title = f"Run {tool_name}"
         elif tool_name == "browser_submit":
             risk, kind = Risk.HIGH, ApprovalKind.PRIVILEGED
             title = "Submit a web form"

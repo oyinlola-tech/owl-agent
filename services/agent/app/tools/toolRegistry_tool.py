@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from pydantic import BaseModel
@@ -69,6 +69,7 @@ class ToolDefinition:
     arguments_model: type[BaseModel]
     requires_approval: bool
     handler_name: str = ""
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 REGISTERED_TOOLS: dict[str, ToolDefinition] = {}
