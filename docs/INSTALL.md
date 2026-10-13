@@ -53,8 +53,8 @@ The stable copies are byte-for-byte the same as the versioned files and are
 listed in `SHA256SUMS.txt` under both names.
 
 GitHub's `/releases/latest/download/...` only serves the newest **published**
-release (not a draft, not a pre-release). Until the first release is published
-these links answer 404.
+release (not a draft, not a pre-release). `v0.1.0` is published, so the links
+above work today.
 
 ## 2. One-line installers
 
@@ -232,8 +232,8 @@ put a `.env` file in that folder. The settings are listed in
 
 If another program already uses port 8000 when OWL starts, OWL does not start
 its own service. If that program is an OWL service (for example one you started
-from source), the app uses it. Otherwise the app runs with sample data and the
-status bar shows "Service offline".
+from source), the app uses it. Otherwise the app shows a clear offline state
+with a retry action; it never shows invented data.
 
 ## Build from source
 
@@ -288,22 +288,18 @@ release. A final job copies each installer to its stable name
 `OWL-Agent-Linux-x64.AppImage`, `OWL-Agent-Linux-x64.deb`,
 `OWL-Agent-Linux-x64.rpm`), uploads the copies, and writes `SHA256SUMS.txt`
 for both the versioned and the stable files. It fails if any expected
-installer is missing.
-
-**Publish the draft when you have checked it.** The website's one-click
-buttons, `/releases/latest/download/...` links and the one-line installers only
-see the newest published (non-draft, non-pre-release) release.
+installer is missing. A last `publish` job then flips the release from draft to
+published, so the website's one-click buttons, `/releases/latest/download/...`
+links and the one-line installers work immediately. The publish step only runs
+when every build and checksum step passed.
 
 ## What has not been verified
 
 - **Code signing and notarization are not configured.** Windows installers have
   no Authenticode signature; macOS builds are not signed with a Developer ID or
   notarized. Expect SmartScreen and Gatekeeper warnings.
-- The Tauri shell (Rust code, sidecar start/stop, `owl://` links, single
-  instance) has not been compiled or run by the author of this setup; the
-  first real check is the release workflow.
-- The installers have only been built by the release workflow, not tested on
-  real Windows, macOS or Linux machines.
+- The installers are built by the release workflow (all platforms green for
+  `v0.1.0`) but have not been tested on real Windows, macOS or Linux machines.
 - The macOS Intel build uses the `macos-15-intel` GitHub runner; if GitHub
   retires that runner, remove that row from the workflow.
 - The browser tools (Playwright) are not included in the bundled service, so

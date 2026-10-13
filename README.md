@@ -170,7 +170,7 @@ All images are real captures of the current build (the app was running without t
 ## Installation
 
 > [!WARNING]
-> Installers are **not code-signed or notarized** yet. Windows SmartScreen and macOS Gatekeeper will warn you. Only bypass the warning for a file whose SHA-256 matches `SHA256SUMS.txt` from the same release. No release has been published yet; until one is, [build from source](#build-from-source).
+> Installers are **not code-signed or notarized** yet. Windows SmartScreen and macOS Gatekeeper will warn you. Only bypass the warning for a file whose SHA-256 matches `SHA256SUMS.txt` from the same release. `v0.1.0` is published; if no newer release exists, [build from source](#build-from-source).
 
 Full details: [docs/INSTALL.md](docs/INSTALL.md).
 
@@ -243,6 +243,8 @@ npx tauri build          # installers land in src-tauri/target/release/bundle/
 ```
 
 ## Usage
+
+The full user guide lives in [docs/USAGE.md](docs/USAGE.md): onboarding, models, projects, tasks, approvals, verification, memory, settings, shortcuts, data handling, troubleshooting, and FAQ. The short version:
 
 1. **First run.** Open OWL. The status bar shows whether the bundled service is online. To use a real model, put `NVIDIA_API_KEY` in a `.env` file in the app data folder (see [Configuration](#configuration)); without a provider, chat and tasks ask you to connect a model first.
 2. **Open a project.** Use **Projects**, then **Open**. The agent can only touch folders listed in `OWL_WORKSPACES`; with no roots set it cannot read files, run commands, or use Git.
