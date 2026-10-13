@@ -41,7 +41,7 @@ test("sending a message starts a real task", async ({ page }) => {
   await composer.fill("Give me a one line summary of this project");
   await page.getByRole("button", { name: "Send message" }).click();
   await expect(page.getByText("Give me a one line summary of this project")).toBeVisible();
-  await expect(page.getByText(/Working|Waiting for your approval|Done/)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/Working|Waiting for your approval|Done/).first()).toBeVisible({ timeout: 30_000 });
 });
 
 test("the terminal runs a real command in the project sandbox", async ({ page }) => {

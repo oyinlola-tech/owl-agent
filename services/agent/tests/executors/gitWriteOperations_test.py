@@ -29,6 +29,8 @@ def make_repo(tmp_path, name="repo"):
     repo = tmp_path / name
     repo.mkdir()
     run_git(repo, "init", "-q", "-b", "main")
+    run_git(repo, "config", "user.email", "t@t")
+    run_git(repo, "config", "user.name", "t")
     (repo / "a.txt").write_text("line one\n")
     run_git(repo, "add", "a.txt")
     run_git(repo, *IDENTITY, "commit", "-q", "-m", "base")
