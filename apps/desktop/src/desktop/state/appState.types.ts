@@ -2,6 +2,13 @@ import type {
   ActEvent, AgentStatus, AppScreen, Approval, CenterTab, ChangeFile,
   ChatMsg, InspectorTab, Project, SideSection, TaskFilter, TermLine,
 } from "./workspace.types";
+import type { BackgroundNoticeKind } from "../../shared/helpers/notifications.helper";
+
+export interface BackgroundTaskEntry {
+  label: string;
+  status: string;
+  pending: BackgroundNoticeKind | null;
+}
 
 export interface ConfirmState {
   title: string;
@@ -54,6 +61,8 @@ export interface AppState {
   terminalTab: "agent" | "dev" | "tests";
   editorTabs: string[];
   cancelTaskStream: (() => void) | null;
+  backgroundTasks: Record<string, BackgroundTaskEntry>;
+  notificationsEnabled: boolean;
 
   goToScreen: (s: AppScreen) => void;
   openProject: (p: Project) => void;
@@ -75,6 +84,9 @@ export interface AppState {
   setPreferredModel: (m: string) => void;
   sendWorkspaceMessage: () => void;
   attachTaskStream: (taskId: string) => void;
+  watchBackgroundTasks: (tasks: { id: string; label?: string }[]) => void;
+  clearBackgroundNotice: (taskId: string) => void;
+  setNotificationsEnabled: (v: boolean) => void;
   pauseAgent: () => void;
   resumeAgent: () => void;
   stopAgent: () => void;

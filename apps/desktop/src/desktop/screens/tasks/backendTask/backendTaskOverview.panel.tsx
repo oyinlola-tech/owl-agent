@@ -1,17 +1,19 @@
-import { Check, GitBranch } from "@phosphor-icons/react";
+import { GitBranch } from "@phosphor-icons/react";
 import type { ApprovalRead, JournalRow, TaskDetail } from "../../../services/agentApi.types";
 import { SectionTitle } from "../../../../shared/components/pageLayout.component";
 import { StatusTag } from "../../../../shared/components/statusTag.component";
 import { formatShortTimeAgo } from "../../../../shared/helpers/time.helper";
 import { VerificationCallout } from "../verification/verificationPanel.component";
+import { PlanEditor } from "../planEditor.component";
 
-export function BackendTaskOverviewPanel({ detail, journal, decidedApprovals, totalTokens, onOpenVerification, onResume }: {
+export function BackendTaskOverviewPanel({ detail, journal, decidedApprovals, totalTokens, onOpenVerification, onResume, onPlanSaved }: {
   detail: TaskDetail;
   journal: JournalRow[];
   decidedApprovals: ApprovalRead[];
   totalTokens: number;
   onOpenVerification: () => void;
   onResume: () => void;
+  onPlanSaved: () => void;
 }) {
   return (
     <>
@@ -20,23 +22,7 @@ export function BackendTaskOverviewPanel({ detail, journal, decidedApprovals, to
           onOpen={onOpenVerification} onResume={onResume} />
       </div>
       <div className="pg-blocks">
-        <section>
-          <SectionTitle count={detail.steps.length}>Plan</SectionTitle>
-          {detail.steps.length === 0 ? <p className="pg-muted pg-p">The agent hasn't written a plan yet.</p> : (
-            <ul className="pg-todo">
-              {detail.steps.map((step, index) => {
-                const done = step.status === "completed" || step.status === "done";
-                return (
-                  <li key={index} className={done ? "done" : step.status === "running" || step.status === "awaiting_approval" ? "now" : ""}>
-                    <span className="box">{done && <Check size={11} weight="bold" />}</span>
-                    <span className="txt">{step.title}</span>
-                    {!done && <StatusTag status={step.status} />}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
+        <PlanEditor taskId={detail.task.id} taskStatus={detail.task.status} steps={detail.steps} onSaved={onPlanSaved} />
         <section>
           <SectionTitle count={detail.checkpoints.length}>Checkpoints</SectionTitle>
           {detail.checkpoints.length === 0 ? <p className="pg-muted pg-p">A checkpoint is saved before the first edit.</p> : (

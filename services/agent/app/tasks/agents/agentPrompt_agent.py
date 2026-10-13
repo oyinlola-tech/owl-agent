@@ -93,6 +93,28 @@ class AgentPromptMixin:
         self.conn.execute("UPDATE tasks SET plan = ? WHERE id = ?", (json.dumps(steps), task_id))
         self.conn.commit()
 
+    def update_plan_steps(self, task_id: str, steps: list[dict]) -> list[dict]:
+        # Security: plan edits are only safe while no worker is running, so routes must
+        # refuse running/awaiting_approval tasks before reaching this write. Client-sent
+        # status fields are never trusted; each kept title carries its stored status and
+        # anything new or rewritten restarts as pending.
+        stored = {
+            str(s.get("title", "")): str(s.get("status", "pending"))
+            for s in self.read_plan_steps(task_id)
+        }
+        cleaned = []
+        for step in steps[:50]:
+            title = str(step.get("title", "")).strip()[:500]
+            if not title:
+                continue
+            entry = {"title": title, "status": stored.get(title, "pending")}
+            summary = str(step.get("summary", "")).strip()[:2000]
+            if summary:
+                entry["summary"] = summary
+            cleaned.append(entry)
+        self.update_task_fields(task_id, plan=json.dumps(cleaned))
+        return cleaned
+
     def recent_tool_history(self, task_id: str) -> list[dict]:
         rows = self.conn.execute(
             "SELECT tool, output_excerpt FROM tool_calls WHERE task_id = ?"

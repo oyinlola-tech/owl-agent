@@ -226,7 +226,8 @@ export function BackendTaskDetailScreen() {
 
       {tab === "overview" && (
         <BackendTaskOverviewPanel detail={detail} journal={journal} decidedApprovals={decidedApprovals}
-          totalTokens={totalInputTokens + totalOutputTokens} onOpenVerification={() => setTab("verification")} onResume={resumeTask} />
+          totalTokens={totalInputTokens + totalOutputTokens} onOpenVerification={() => setTab("verification")} onResume={resumeTask}
+          onPlanSaved={() => void loadTaskDetail(taskId)} />
       )}
       {tab === "verification" && (
         <VerificationPanel taskStatus={task.status} summary={detail.verification} runs={verificationRuns} onResume={resumeTask} />

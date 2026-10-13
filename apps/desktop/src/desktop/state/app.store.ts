@@ -7,9 +7,28 @@ import { ApiError } from "../services/connection/serviceRequest.service";
 import {
   applyTaskEvent, mapApprovalRow, refreshApprovals, refreshChanges, statusFromSnapshot, type TaskEngineHost,
 } from "./workspaceTaskEngine";
+import {
+  applyTitleBadge, classifyBackgroundEvent, ensureNotificationPermission,
+  notifyBackgroundTask, shouldNotifyForTask, type BackgroundNoticeKind,
+} from "../../shared/helpers/notifications.helper";
 
 let idCounter = 0;
 const createUniqueId = (prefix: string) => `${prefix}-${++idCounter}-${Date.now() % 100000}`;
+
+// One SSE subscription per backgrounded (not currently open) task id.
+// The open task's own attachTaskStream covers it; these watchers cover the
+// rest so tasks survive project switches. Uses only agentApi.events().
+const backgroundWatchers = new Map<string, () => void>();
+
+const BACKGROUND_STATUS_LABEL: Record<BackgroundNoticeKind, string> = {
+  approval: "awaiting_approval",
+  completed: "completed",
+  failed: "failed",
+};
+
+function countPending(entries: Record<string, { pending: BackgroundNoticeKind | null }>): number {
+  return Object.values(entries).filter((e) => e.pending !== null).length;
+}
 
 function welcomeChat(project: Project): { id: string; from: "sys"; text: string }[] {
   const languages = project.stack?.languages ?? [];
@@ -121,10 +140,15 @@ export const useAppStore = create<AppState>((set, get) => {
     terminalTab: "agent",
     editorTabs: [],
     cancelTaskStream: null,
+    backgroundTasks: {},
+    notificationsEnabled: readStoredFlag("owl-notify", true),
 
     goToScreen: (screen) => set({ screen, commandPaletteOpen: false, askOwlOpen: false }),
     openProject: (project) => {
+      const prevTaskId = get().taskId;
       get().cancelTaskStream?.();
+      // The previous open task survives the switch as a backgrounded task.
+      if (prevTaskId) get().watchBackgroundTasks([{ id: prevTaskId }]);
       set({
         project, screen: "workspace", centerTab: "chat", taskId: null, needsProvider: false,
         chat: welcomeChat(project), terminal: [], agentEvents: [], approvals: [], changes: [],
@@ -178,6 +202,16 @@ export const useAppStore = create<AppState>((set, get) => {
     },
     attachTaskStream: (taskId) => {
       get().cancelTaskStream?.();
+      // Now open (visible): the open stream covers it, so drop any
+      // background watcher and clear its pending flag + title badge.
+      backgroundWatchers.get(taskId)?.();
+      backgroundWatchers.delete(taskId);
+      const entry = get().backgroundTasks[taskId];
+      if (entry?.pending) {
+        const backgroundTasks = { ...get().backgroundTasks, [taskId]: { ...entry, pending: null } };
+        set({ backgroundTasks });
+        applyTitleBadge(countPending(backgroundTasks));
+      }
       const cancel = agentApi.events(taskId, (type, payload) => {
         if (type === "snapshot") {
           const snapshot = payload as { status: string; progress: number; approvals?: unknown[] };
@@ -190,6 +224,55 @@ export const useAppStore = create<AppState>((set, get) => {
         applyTaskEvent(type, (payload as { data?: unknown }).data ?? payload, host());
       });
       set({ cancelTaskStream: cancel });
+    },
+    watchBackgroundTasks: (tasks) => {
+      for (const task of tasks) {
+        const taskId = task.id?.trim();
+        if (!taskId || backgroundWatchers.has(taskId)) continue;
+        const label = task.label?.trim() || taskId;
+        set((s) => ({
+          backgroundTasks: s.backgroundTasks[taskId]
+            ? s.backgroundTasks
+            : { ...s.backgroundTasks, [taskId]: { label, status: "running", pending: null } },
+        }));
+        try {
+          const cancel = agentApi.events(taskId, (type, payload) => {
+            // The open task is visible: never notify for it.
+            if (!shouldNotifyForTask(taskId, get().taskId)) return;
+            const kind = classifyBackgroundEvent(type, payload);
+            if (!kind) return;
+            const current = get().backgroundTasks[taskId];
+            const backgroundTasks = {
+              ...get().backgroundTasks,
+              [taskId]: { label: current?.label ?? label, status: BACKGROUND_STATUS_LABEL[kind], pending: kind },
+            };
+            set({ backgroundTasks });
+            applyTitleBadge(countPending(backgroundTasks));
+            if (!get().notificationsEnabled) return;
+            // First backgrounded event triggers the permission request.
+            void ensureNotificationPermission().then((state) => {
+              if (state !== "granted") return;
+              if (!shouldNotifyForTask(taskId, get().taskId)) return;
+              notifyBackgroundTask(kind, backgroundTasks[taskId]?.label ?? label);
+            });
+          });
+          backgroundWatchers.set(taskId, cancel);
+        } catch {
+          // Service unreachable: tracking entry stays, no subscription.
+          continue;
+        }
+      }
+    },
+    clearBackgroundNotice: (taskId) => {
+      const entry = get().backgroundTasks[taskId];
+      if (!entry?.pending) return;
+      const backgroundTasks = { ...get().backgroundTasks, [taskId]: { ...entry, pending: null } };
+      set({ backgroundTasks });
+      applyTitleBadge(countPending(backgroundTasks));
+    },
+    setNotificationsEnabled: (notificationsEnabled) => {
+      writeStoredFlag("owl-notify", notificationsEnabled);
+      set({ notificationsEnabled });
     },
     pauseAgent: () => {
       const taskId = get().taskId;
@@ -231,7 +314,9 @@ export const useAppStore = create<AppState>((set, get) => {
       runCommandWithOptions(command, options);
     },
     startNewTask: () => {
+      const prevTaskId = get().taskId;
       get().cancelTaskStream?.();
+      if (prevTaskId) get().watchBackgroundTasks([{ id: prevTaskId }]);
       const project = get().project;
       set({
         taskId: null, needsProvider: false, agentStatus: "idle", agentStep: 0, agentEvents: [],

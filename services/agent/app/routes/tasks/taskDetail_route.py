@@ -8,6 +8,7 @@ from ...executors.fileChange_executor import (
     list_change_journal,
     revert_journaled_change,
 )
+from ...schemas.task_schema import TaskStatus
 from ...tasks.taskManager_task import TaskManager
 from ..providers.providerErrorResponse_route import build_error_response
 
@@ -37,6 +38,21 @@ def create_task_detail_router(manager: TaskManager) -> APIRouter:
             "verification": manager.summarize_verification(task_id),
             "memories_used": manager.list_task_memory_uses(task_id),
         }
+
+    @router.put("/tasks/{task_id}/plan")
+    async def update_task_plan(task_id: str, payload: dict):  # type: ignore[no-untyped-def]
+        task = manager.get_task_or_404(task_id)
+        # Security: editing a live plan races the worker, so only paused/created tasks
+        # may be reordered or rewritten; resume picks the saved plan back up.
+        if task.status not in (TaskStatus.CREATED, TaskStatus.PAUSED):
+            return build_error_response(409, "Pause the task before editing its plan.", "conflict")
+        steps = payload.get("steps")
+        if not isinstance(steps, list):
+            return build_error_response(422, "steps must be a list of steps.", "validation")
+        updated = manager.update_plan_steps(task_id, [s for s in steps if isinstance(s, dict)])
+        await manager.save_checkpoint(task_id, "plan-edited")
+        await manager.bus.publish_event(task_id, "plan.updated", {"steps": len(updated)})
+        return {"task": manager.get_task_or_404(task_id), "steps": updated}
 
     @router.get("/tasks/{task_id}/tool-calls")
     async def list_tool_calls(task_id: str):  # type: ignore[no-untyped-def]
