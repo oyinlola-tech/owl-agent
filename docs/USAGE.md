@@ -298,8 +298,6 @@ every hard-coded name in greetings.
   addresses.
 - The only knobs that send data anywhere are the ones you approve: provider
   calls, network-granted commands, and page captures.
-- The onlyknobs that send data anywhere are the ones you approve: provider
-  calls, network-granted commands, and page captures.
 
 ## 15. Troubleshooting
 
