@@ -56,10 +56,11 @@ data, onboarding, one-click + terminal installers. See providers.plan.md.
 - Phase 38 Emergency controls (Stop/Kill/Revoke/Lock).  Phase 39 Observability.
 - Phase 40 Production release.
 
-## Locked next features (owner-approved 2026-10-13)
+## Locked next features (owner-approved 2026-10-13 — all built same day)
 
 Built in this order (1, 2, 8 first — they compound); each reuses the one
-runtime and its approvals, sandbox, audit, and verification:
+runtime and its approvals, sandbox, audit, and verification. All 10 shipped
+(main `d98383b` → `41947aa`):
 
 1. Real Git workflows — push/pull/sync, conflict-resolution UI, branch
    compare, through the sandboxed git runner with approvals.
