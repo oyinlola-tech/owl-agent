@@ -27,8 +27,7 @@ Providers + API keys (Claude/OpenAI/Gemini/Grok/Groq/NVIDIA/local), credential v
 data storage, personalization, stack advisor, real projects/files/git/commands, remove mock
 data, onboarding, one-click + terminal installers. See providers.plan.md.
 
-## Next, in order (each reuses the one runtime)
-- Phase 6  Git agent (status/diff/branch/commit/revert; push/merge/force-push need approval).
+## Next, in order (each reuses the one runtime)- Phase 6  Git agent (status/diff/branch/commit/revert; push/merge/force-push need approval).
 - Phase 7  Browser agent (isolated Playwright; click/type/upload/screenshot/extract; DOM is
   untrusted data). Foundation for research, recreation, QA, web security, form automation.
 - Phase 8  Internet research (search → read → compare → cite → save to memory).
@@ -56,6 +55,30 @@ data, onboarding, one-click + terminal installers. See providers.plan.md.
 - Phase 35 Full safety architecture.  Phase 36 Internet safety.  Phase 37 Credential vault.
 - Phase 38 Emergency controls (Stop/Kill/Revoke/Lock).  Phase 39 Observability.
 - Phase 40 Production release.
+
+## Locked next features (owner-approved 2026-10-13)
+
+Built in this order (1, 2, 8 first — they compound); each reuses the one
+runtime and its approvals, sandbox, audit, and verification:
+
+1. Real Git workflows — push/pull/sync, conflict-resolution UI, branch
+   compare, through the sandboxed git runner with approvals.
+2. Background tasks + notifications — tasks survive project switches; OS
+   notification on approval-needed, verified, or failed.
+3. Editable multi-file plans — reorder/rewrite plan steps before execution
+   instead of take-it-or-leave-it.
+4. Built-in diff editor / merge tool — accept hunks, not just whole files.
+5. Project templates / starter kits — stack advisor recommendations become
+   one-click scaffold + init + first commit (approval-gated).
+6. Usage/cost dashboard — per-task spend, per-model breakdown, budget caps
+   with warnings.
+7. Voice input + Ask OWL polish — mic in the composer.
+8. Auto-update — signed `latest.json` endpoint plus in-app prompt (Tauri
+   updater is half-wired). Required once users are installed.
+9. Shareable task bundles — export/import a task (plan, diffs, verification
+   log) as a file or link; team/shared memory follows.
+10. Plugin/MCP tools — user-added custom tools (linters, deploy scripts)
+    through the same permission, risk, approval, and audit system.
 
 ## Sensitive phases — handled carefully, not skipped
 Scope these to clear defensive/authorized-use designs with their own gated spec before any
