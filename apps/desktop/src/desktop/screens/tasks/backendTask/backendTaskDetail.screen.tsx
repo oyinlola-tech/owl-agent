@@ -161,7 +161,7 @@ export function BackendTaskDetailScreen() {
   const totalInputTokens = detail.usage.reduce((total, row) => total + row.input_tokens, 0);
   const totalOutputTokens = detail.usage.reduce((total, row) => total + row.output_tokens, 0);
   const verificationRuns = detail.verifications ?? [];
-  const resumeTask = () => void runTaskAction(() => agentApi.resumeBackendTask(task.id), "Task resumed", "running");
+  const resumeTask = () => void runTaskAction(() => agentApi.resumeBackendTask(task.id), "Task resumed");
   const tabs: [BackendTaskTab, string, Icon, number?][] = [
     ["overview", "Overview", Info],
     ["verification", "Verification", SealCheck, verificationRuns.length],
@@ -188,7 +188,7 @@ export function BackendTaskDetailScreen() {
         { icon: CalendarBlank, label: "Updated", value: <span title={new Date(task.updated_at).toLocaleString()}>{formatShortTimeAgo(task.updated_at)}</span> },
       ]} />
       <div className="pg-actions">
-        {task.status === "running" && <button className="btn btn-secondary" onClick={() => void runTaskAction(() => agentApi.pauseBackendTask(task.id), "Task paused", "paused")}><Pause size={14} /> Pause</button>}
+        {task.status === "running" && <button className="btn btn-secondary" onClick={() => void runTaskAction(() => agentApi.pauseBackendTask(task.id), "Task paused")}><Pause size={14} /> Pause</button>}
         {(task.status === "paused" || task.status === "failed") && (
           <button className="btn btn-primary" onClick={resumeTask}><Play size={14} /> Resume</button>
         )}
@@ -197,7 +197,7 @@ export function BackendTaskDetailScreen() {
             title: "Cancel this task?",
             body: "The agent stops at its next step. Approved changes stay and checkpoints are kept.",
             confirmLabel: "Cancel task",
-            run: () => void runTaskAction(() => agentApi.cancelBackendTask(task.id), "Task cancelled", "cancelled"),
+            run: () => void runTaskAction(() => agentApi.cancelBackendTask(task.id), "Task cancelled"),
           })}><X size={14} /> Cancel</button>
         )}
         <button className="btn btn-secondary" onClick={() => copyTextAndNotify(task.id, notify, "Task ID copied")}><Copy size={14} /> Copy ID</button>

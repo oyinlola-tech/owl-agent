@@ -29,7 +29,7 @@ export function DocsPage() {
         <article className="docs-body">
           <section id="start">
             <h2>Getting started</h2>
-            <p>OWL has two parts: the desktop app you are looking at, and a Python service that runs the agent on your machine. The app works on its own with sample data; connect the service to run real tasks.</p>
+            <p>OWL has two parts: the desktop app you are looking at, and a Python service that runs the agent on your machine. The app needs the local service running; connect the service to run real tasks.</p>
             <h3 id="start-app"><Tile icon={Desktop} hue="blue" /> Run the desktop app</h3>
             <p>The quickest way to get the desktop app is to install it for your system from the <SiteLink to="/download">download page</SiteLink>. It has installers for Windows, macOS, and Linux, plus one-line terminal installs. To run it from source instead, follow the steps below.</p>
             <p>You need Node.js. The Rust toolchain is only needed for the native desktop window.</p>
@@ -39,8 +39,8 @@ export function DocsPage() {
             <CodeBlock label="services/agent" code={"$ cd services/agent\n$ python3 -m venv .venv\n$ .venv/bin/pip install -e \".[dev]\"\n$ cp .env.example .env\n$ .venv/bin/python -m uvicorn --factory app:create_app --port 8000"} />
             <p>Check it is up with <code>curl localhost:8000/health</code>. The status bar in the app turns green when it can reach the service.</p>
             <h3 id="start-connect"><Tile icon={Plug} hue="green" /> Connect a model and a project</h3>
-            <p>Put your provider key and the folders OWL may work in into <code>services/agent/.env</code>. Without a key, a deterministic mock answers so you can try the flow safely.</p>
-            <CodeBlock label="services/agent/.env" code={"NVIDIA_API_KEY=your-key-here\nOWL_WORKSPACES=/home/you/Projects/zudomart,/home/you/Projects/prooflens"} />
+            <p>Put your provider key and the folders OWL may work in into <code>services/agent/.env</code>. Without a key, chat is unavailable until you configure a provider.</p>
+            <CodeBlock label="services/agent/.env" code={"NVIDIA_API_KEY=your-key-here\nOWL_WORKSPACES=/home/you/Projects/my-app"} />
             <div className="callout blue"><Sparkle size={18} weight="duotone" /><span>In the app, open <b>Settings → AI</b> and choose <b>Verify</b>. It checks the key and model without spending tokens.</span></div>
           </section>
 

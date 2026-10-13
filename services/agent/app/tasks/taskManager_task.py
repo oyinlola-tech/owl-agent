@@ -110,3 +110,5 @@ class TaskManager(
         self.running_workers: dict[str, asyncio.Task] = {}
         self.approval_gates: dict[str, asyncio.Event] = {}
         self.insert_lock = asyncio.Lock()
+        self._resume_locks: dict[str, asyncio.Lock] = {}
+        self._task_elapsed: dict[str, float] = {}

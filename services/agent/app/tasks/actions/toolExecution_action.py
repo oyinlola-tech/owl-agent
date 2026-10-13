@@ -67,6 +67,10 @@ class ToolExecutionMixin:
                 ).fetchone()
                 if dup:
                     return {"skipped": "duplicate", "note": "identical action already applied"}
+                # Security: claim the single-use approval before running, so a racer that
+                # Security: loses the guarded UPDATE re-requests instead of double-spending.
+                if not mark_approval_consumed(self.conn, str(approval.get("id", ""))):
+                    raise ToolApprovalNeededError(tool_name, canon, why)
         else:
             approval = {}
         started = time.monotonic()
@@ -114,8 +118,6 @@ class ToolExecutionMixin:
             await self.bus.publish_event(
                 task_id, "security.unsandboxed", {"tool": tool_name, "status": status}
             )
-        if tool.requires_approval and approval.get("scope") != "task":
-            mark_approval_consumed(self.conn, str(approval.get("id", "")))
         await self.save_checkpoint(task_id, f"tool:{tool_name}")
         await self.bus.publish_event(
             task_id,

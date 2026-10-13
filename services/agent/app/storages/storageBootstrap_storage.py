@@ -57,6 +57,24 @@ def migrate_legacy_database_if_needed(layout: DataLayout) -> str:
     for candidate in list_legacy_database_candidates(layout):
         if not os.path.isfile(candidate):
             continue
+        if os.name == "posix":
+            try:
+                candidate_stat = os.stat(candidate)
+            except OSError:
+                continue
+            if candidate_stat.st_uid != os.getuid():
+                # Security: a legacy database owned by someone else could carry their
+                # tasks and tokens, so it is never adopted.
+                log.error("legacy database %s skipped: not owned by the current user", candidate)
+                continue
+            if candidate_stat.st_mode & 0o077:
+                # Security: a group/world-readable database leaks task history, so a
+                # legacy copy with loose permissions is never adopted.
+                log.error(
+                    "legacy database %s skipped: permissions are not private (need 0600/0700)",
+                    candidate,
+                )
+                continue
         ok, detail = check_database_integrity(candidate)
         if not ok:
             log.warning("legacy database %s skipped: %s", candidate, detail)
@@ -89,12 +107,27 @@ def check_and_repair_database(layout: DataLayout) -> tuple[str, dict | None, lis
     return "failed", restore, [notice]
 
 
-def create_backup_before_migrations(layout: DataLayout):  # type: ignore[no-untyped-def]
+def create_backup_before_migrations(layout: DataLayout, notices: list[str] | None = None):  # type: ignore[no-untyped-def]
     def back_up_before_migrating() -> None:
         try:
-            create_database_backup(layout.database_path, layout.backups_dir, "pre-migration")
+            created = create_database_backup(
+                layout.database_path, layout.backups_dir, "pre-migration"
+            )
+            log.info("pre-migration backup written: %s", created["name"])
         except DatabaseBackupError as exc:
-            log.warning("pre-migration backup failed: %s", exc)
+            # Security: bricking the database on a backup failure is worse than
+            # proceeding, but a missing safety net must be loud and visible.
+            log.error(
+                "pre-migration backup of %s to %s failed: %s; continuing without a fresh backup",
+                layout.database_path,
+                layout.backups_dir,
+                exc,
+            )
+            if notices is not None:
+                notices.append(
+                    "OWL couldn't write a backup before updating its database"
+                    f" ({layout.backups_dir}): {exc}. Your data was still updated."
+                )
 
     return back_up_before_migrating
 
@@ -135,14 +168,17 @@ def prepare_local_storage(data_dir: str = "", db_path: str = "") -> LocalStorage
     log_file = install_rotating_log_file(layout.logs_dir)
     migrated_from = migrate_legacy_database_if_needed(layout)
     integrity, restore, notices = check_and_repair_database(layout)
-    conn = open_database(layout.database_path, create_backup_before_migrations(layout))
+    backup_notices: list[str] = []
+    conn = open_database(
+        layout.database_path, create_backup_before_migrations(layout, backup_notices)
+    )
     storage = LocalStorage(
         layout=layout,
         conn=conn,
         migrated_from=migrated_from,
         integrity=integrity,
         restore=restore,
-        notices=notices,
+        notices=[*notices, *backup_notices],
         log_file=log_file,
     )
     if migrated_from:

@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 
 from ...verificationRequirement_requirement import VerificationRequirement
-from ..projectFile_detector import any_file_exists
+from ..projectFile_detector import any_file_exists, any_glob_matches
 
 GRADLE_BUILD_FILES = ("build.gradle", "build.gradle.kts")
 # Security: any Gradle or Maven build script can redefine the test task to do nothing, so the
@@ -54,6 +54,27 @@ def detect_maven_gradle_requirements(workspace: str) -> list[VerificationRequire
             )
         )
     return found
+
+
+def detect_kotlin_requirements(workspace: str) -> list[VerificationRequirement]:
+    if any_file_exists(workspace, *GRADLE_BUILD_FILES, "pom.xml"):
+        return []
+    if not any_glob_matches(
+        workspace, "*.kt", "*.kts", "src/*.kt", "src/*.kts", "src/**/*.kt", "src/**/*.kts"
+    ):
+        return []
+    return [
+        VerificationRequirement(
+            kind="tests",
+            argv=("kotlinc",),
+            cwd=".",
+            source="project_manifest",
+            detail="Kotlin sources (kotlinc)",
+            required=False,
+            # Security: kotlin sources decide what gets compiled and checked.
+            influences=("*.kt", "*.kts", "src/**/*.kt", "src/**/*.kts"),
+        )
+    ]
 
 
 def detect_scala_sbt_requirements(workspace: str) -> list[VerificationRequirement]:

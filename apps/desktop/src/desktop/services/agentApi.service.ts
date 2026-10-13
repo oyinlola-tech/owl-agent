@@ -1,7 +1,7 @@
 import {
   SERVICE_BASE_URL, buildEventStreamUrl, fetchFromService, loadServiceImageAsObjectUrl, requestServiceJson,
 } from "./connection/serviceRequest.service";
-import type { ApprovalRead, BackendTask, BudgetReport, ChatMessage, CommandRow, CommitMessageDraft, DataStatus, FileSaveResult, GitBranches, GitSummary, HealthRead, JournalRow, LocalRunner, MemoryHistoryRow, MemoryRow, ModelEntry, OnboardingRead, OnboardingStep, Project, ProjectCreateRead, ProjectFileContent, ProjectListRead, ProjectTree, ProviderActivation, ProviderCard, ProviderCardsRead, ProviderModelsRead, ProviderRead, ProviderTestRead, RouteRead, SearchResponse, SecurityStatusRead, TaskDetail, ToolRead, UsageRow, UserProfile, UserProfileRead, VerifyRead } from "./agentApi.types";
+import type { ApprovalRead, BackendTask, BudgetReport, ChatMessage, CommandRow, CommitMessageDraft, DataStatus, FileSaveResult, GitBranches, GitSummary, HealthRead, JournalRow, LocalRunner, MemoryHistoryRow, MemoryRow, ModelEntry, OnboardingRead, OnboardingStep, Project, ProjectCreateRead, ProjectFileContent, ProjectListRead, ProjectTree, ProviderActivation, ProviderCard, ProviderCardsRead, ProviderModelsRead, ProviderRead, ProviderTestRead, RouteRead, SearchResponse, SecurityStatusRead, StackCatalogRead, StackRecommendRead, TaskDetail, ToolRead, UsageRow, UserProfile, UserProfileRead, VerifyRead } from "./agentApi.types";
 
 export { ApiError, isServiceAuthError } from "./connection/serviceRequest.service";
 
@@ -166,6 +166,16 @@ export const agentApi = {
     ),
   loadScreenshotObjectUrl: (name: string) => loadServiceImageAsObjectUrl(`/shots/${encodeURIComponent(name)}`),
   securityStatus: () => request<SecurityStatusRead>("/security/status"),
+  stacks: () => request<StackCatalogRead>("/stacks"),
+  recommendStack: (description: string, constraints?: string) =>
+    request<StackRecommendRead>("/stacks/recommend", {
+      method: "POST",
+      body: JSON.stringify(
+        constraints?.trim()
+          ? { description, constraints: { team_experience: constraints.trim() } }
+          : { description },
+      ),
+    }),
   providers: () => request<ProviderCardsRead>("/providers"),
   localProviders: () => request<{ runners: LocalRunner[] }>("/providers/local"),
   setActiveProvider: (providerId: string, model?: string) =>

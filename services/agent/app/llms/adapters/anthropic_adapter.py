@@ -86,7 +86,7 @@ class AnthropicProvider(ModelProvider):
             response = await client.beta.messages.create(**params)
         except SDK_ERRORS as exc:
             raise convert_anthropic_error(exc, self._redact) from None
-        self._usage = read_usage_from_message(response)
+        self._store_usage(read_usage_from_message(response))
         return read_text_from_message(response)
 
     async def complete_stream(
@@ -104,7 +104,7 @@ class AnthropicProvider(ModelProvider):
             raise
         except SDK_ERRORS as exc:
             raise convert_anthropic_error(exc, self._redact) from None
-        self._usage = read_usage_from_message(final)
+        self._store_usage(read_usage_from_message(final))
         read_text_from_message(final)
 
     async def list_models(self) -> list[str]:

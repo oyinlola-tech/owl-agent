@@ -5,12 +5,13 @@ import time
 
 from ...contexts.contextBudget_context import ContextBudgetPlanner
 from ...schemas.task_schema import TaskStatus
-from ..taskRule_task import TaskBlockedError, TaskLimitReachedError
+from ..taskRule_task import TERMINAL, TaskBlockedError, TaskLimitReachedError
 
 
 class AgentRunMixin:
     async def run_task_from_plan_to_finish(self, task_id: str) -> None:
-        started_at = time.monotonic()
+        # Security: the time budget is cumulative across pauses and resumes in this process.
+        started_at = time.monotonic() - float(self._task_elapsed.get(task_id, 0.0) or 0.0)
         self.forget_cached_knowledge(task_id)
         observations: list[str] = [
             f"{tc['tool']} -> {tc['output_excerpt'][:300]}"
@@ -45,8 +46,11 @@ class AgentRunMixin:
         except TaskBlockedError as exc:
             self.pause_task_with_note(task_id, str(exc))
         except Exception as exc:
-            self.set_task_status(task_id, TaskStatus.FAILED)
-            await self.bus.publish_event(task_id, "task.failed", {"reason": str(exc)[:300]})
+            row = self.fetch_task_row(task_id)
+            # Security: a terminal state (e.g. CANCELLED) is never overwritten by FAILED.
+            if row is not None and row["status"] not in TERMINAL:
+                self.set_task_status(task_id, TaskStatus.FAILED)
+                await self.bus.publish_event(task_id, "task.failed", {"reason": str(exc)[:300]})
         except asyncio.CancelledError:
             if not self.is_shutting_down:
                 try:
@@ -58,6 +62,7 @@ class AgentRunMixin:
                 await self.bus.publish_event(task_id, "task.cancelled", {})
             raise
         finally:
+            self._task_elapsed[task_id] = max(0.0, time.monotonic() - started_at)
             self.running_workers.pop(task_id, None)
             self.forget_cached_knowledge(task_id)
             # Security: a browser session is tied to its task and never outlives it.

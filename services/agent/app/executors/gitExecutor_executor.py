@@ -6,6 +6,7 @@ import re
 from .commandExecutor_executor import CommandError, CommandExecutor, CommandTimedOutError
 
 GIT_ENVIRONMENT = {"GIT_OPTIONAL_LOCKS": "0", "GIT_TERMINAL_PROMPT": "0"}
+MUTATING_GIT_SUBCOMMANDS = frozenset({"clone", "fetch", "pull", "checkout", "merge"})
 MAX_COMMIT_MESSAGE_DIFF = 16000
 INVALID_REF_SEGMENT = re.compile(r"[\x00-\x20\x7f~^:?*\[\\]|\.\.|@\{|//")
 
@@ -34,6 +35,14 @@ def validate_git_ref_name(name: str) -> str:
     return candidate
 
 
+def suppress_git_hooks(args: tuple[str, ...]) -> list[str]:
+    # Security: hook programs from a repo run as the service user; the subcommands that
+    # can pull hostile hook code into scope never run with hooks enabled.
+    if args and args[0] in MUTATING_GIT_SUBCOMMANDS:
+        return ["-c", "core.hooksPath=/dev/null", *args]
+    return list(args)
+
+
 async def run_git_command(
     executor: CommandExecutor,
     path: str,
@@ -43,12 +52,14 @@ async def run_git_command(
     network: bool = False,
 ) -> str:
     # Security: git runs hooks and repo-configured programs, so it goes through the same
-    # scrubbed environment and sandbox as every other command.
+    # scrubbed environment and sandbox as every other command. Clone, fetch, pull,
+    # checkout and merge additionally run with core.hooksPath=/dev/null so a hostile
+    # repo cannot execute hook programs during those operations.
     root = executor.auth.resolve_authorized_path(path)
     try:
         res = await executor.run_command(
             task_id,
-            ["git", "-C", root, *args],
+            ["git", "-C", root, *suppress_git_hooks(args)],
             root,
             timeout,
             GIT_ENVIRONMENT,
@@ -138,7 +149,12 @@ async def _run_git_capturing(
     root = executor.auth.resolve_authorized_path(path)
     try:
         return await executor.run_command(
-            "git", ["git", "-C", root, *args], root, timeout, GIT_ENVIRONMENT, network=network
+            "git",
+            ["git", "-C", root, *suppress_git_hooks(args)],
+            root,
+            timeout,
+            GIT_ENVIRONMENT,
+            network=network,
         )
     except CommandTimedOutError as exc:
         raise GitError("git command timed out") from exc

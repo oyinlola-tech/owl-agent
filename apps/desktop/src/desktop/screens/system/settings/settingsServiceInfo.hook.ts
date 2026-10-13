@@ -4,10 +4,8 @@ import type { ModelEntry, ProviderRead } from "../../../services/agentApi.types"
 
 export function useSettingsServiceInfo() {
   const [provider, setProvider] = useState<ProviderRead | null>(null);
-  const [providerDemo] = useState(false);
   const [models, setModels] = useState<ModelEntry[]>([]);
   const [roots, setRoots] = useState<string[]>([]);
-  const [rootsDemo] = useState(false);
   const [health, setHealth] = useState<string>("checking");
   const reload = async () => {
     setProvider(await agentApi.provider().catch(() => null));
@@ -16,7 +14,7 @@ export function useSettingsServiceInfo() {
     agentApi.health().then((status) => setHealth(`online · v${status.version}`)).catch(() => setHealth("offline"));
   };
   useEffect(() => { void reload(); }, []);
-  return { provider, providerDemo, models, roots, rootsDemo, health, reload };
+  return { provider, models, roots, health, reload };
 }
 
 export type SettingsServiceInfo = ReturnType<typeof useSettingsServiceInfo>;

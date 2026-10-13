@@ -8,6 +8,7 @@ from ..sandboxPolicy_sandbox import (
     SYSTEM_READONLY_PATHS,
     SandboxLaunch,
     SandboxPolicy,
+    SandboxUnavailableError,
     is_inside,
     list_toolchain_paths,
 )
@@ -17,11 +18,27 @@ def find_bubblewrap_binary() -> str | None:
     return shutil.which("bwrap")
 
 
+def find_prlimit_binary() -> str | None:
+    prlimit = shutil.which("prlimit")
+    if not prlimit or not is_inside(os.path.realpath(prlimit), "/usr"):
+        return None
+    return prlimit
+
+
+def build_bubblewrap_rlimits(policy: SandboxPolicy) -> dict[str, int]:
+    limits = policy.limits
+    return {
+        name: value
+        for name, value in {"cpu": limits.cpu_seconds, "nofile": limits.open_files}.items()
+        if value > 0
+    }
+
+
 def build_resource_limit_prefix(policy: SandboxPolicy) -> list[str]:
     # Security: prlimit runs INSIDE the new user namespace, where the process count starts
     # at zero, so a fork bomb hits the cap without counting the user's other processes.
-    prlimit = shutil.which("prlimit")
-    if not prlimit or not is_inside(os.path.realpath(prlimit), "/usr"):
+    prlimit = find_prlimit_binary()
+    if not prlimit:
         return []
     limits = policy.limits
     prefix = [prlimit]
@@ -111,5 +128,17 @@ def build_bubblewrap_launch(
     bound.append(workspace_root)
     args += list_masking_arguments(policy, bound, workspace_root)
     args += ["--chdir", workdir, "--setenv", "TMPDIR", "/tmp", "--setenv", "HOME", policy.home]
+    limits = policy.limits
+    if (limits.max_processes > 0 or limits.memory_mb > 0) and find_prlimit_binary() is None:
+        raise SandboxUnavailableError(
+            "prlimit is not available; cannot enforce max_processes/memory limits"
+            " in the bubblewrap sandbox"
+        )
     args += ["--"] + build_resource_limit_prefix(policy) + list(argv)
-    return SandboxLaunch(argv=args, sandboxed=True, backend="bubblewrap", network=network)
+    return SandboxLaunch(
+        argv=args,
+        sandboxed=True,
+        backend="bubblewrap",
+        network=network,
+        rlimits=build_bubblewrap_rlimits(policy),
+    )

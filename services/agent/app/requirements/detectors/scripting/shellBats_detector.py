@@ -32,7 +32,7 @@ def detect_shell_requirements(workspace: str) -> list[VerificationRequirement]:
             )
         )
     sh_files = find_files_matching(workspace, "*.sh")
-    if found and (any_file_exists(workspace, ".shellcheckrc") or sh_files):
+    if any_file_exists(workspace, ".shellcheckrc") or sh_files:
         targets = tuple(sh_files[:25]) if sh_files else ("-r", ".")
         found.append(
             VerificationRequirement(

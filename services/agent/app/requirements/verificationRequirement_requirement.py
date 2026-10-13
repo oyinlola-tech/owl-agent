@@ -46,7 +46,9 @@ class VerificationRequirement:
     def __post_init__(self) -> None:
         if not self.id:
             digest = hashlib.sha256(
-                json.dumps([self.kind, list(self.argv), self.cwd]).encode()
+                json.dumps(
+                    [self.kind, list(self.argv), self.cwd, self.required, self.timeout]
+                ).encode()
             ).hexdigest()[:12]
             object.__setattr__(self, "id", f"req-{digest}")
 

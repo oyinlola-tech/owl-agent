@@ -85,40 +85,60 @@ class TaskLifecycleMixin:
 
     async def pause_task(self, task_id: str) -> TaskRead:
         self.get_task_or_404(task_id)
-        self.conn.execute(
-            "UPDATE tasks SET status = ? WHERE id = ? AND status = ?",
-            (TaskStatus.PAUSED.value, task_id, TaskStatus.RUNNING.value),
+        # Security: pausing while gated keeps the gate wait valid; resume re-enters it.
+        cur = self.conn.execute(
+            "UPDATE tasks SET status = ? WHERE id = ? AND status IN (?, ?)",
+            (
+                TaskStatus.PAUSED.value,
+                task_id,
+                TaskStatus.RUNNING.value,
+                TaskStatus.AWAITING_APPROVAL.value,
+            ),
         )
         self.conn.commit()
-        await self.bus.publish_event(task_id, "task.paused", {})
+        if cur.rowcount:
+            await self.bus.publish_event(task_id, "task.paused", {})
         return self.get_task_or_404(task_id)
 
     async def resume_task(self, task_id: str) -> TaskRead:
-        record = self.get_task_or_404(task_id)
-        if record.status not in (TaskStatus.PAUSED, TaskStatus.FAILED):
-            return record
-        worker = self.running_workers.get(task_id)
-        if worker and not worker.done():
-            # Security: a task that is already running is never started twice.
-            return record
-        if record.status == TaskStatus.FAILED:
-            self.update_task_fields(task_id, verification_attempts=0)
-        # Security: the user may have edited files by hand before resuming, which OWL can't
-        # observe, so earlier verification results (passes and failures) no longer count.
-        self.update_task_fields(task_id, reverify_after=current_utc_time().isoformat())
-        pending = [
-            a for a in self.list_task_approvals(task_id) if a.status == ApprovalState.PENDING
-        ]
-        self.set_task_status(
-            task_id, TaskStatus.AWAITING_APPROVAL if pending else TaskStatus.RUNNING
-        )
-        await self.bus.publish_event(
-            task_id, "task.resumed", {"from_step": self.current_step_index(task_id)}
-        )
-        self.running_workers[task_id] = asyncio.create_task(
-            self.run_task_from_plan_to_finish(task_id)
-        )
-        return self.get_task_or_404(task_id)
+        lock = self._resume_locks.setdefault(task_id, asyncio.Lock())
+        async with lock:
+            record = self.get_task_or_404(task_id)
+            if record.status not in (TaskStatus.PAUSED, TaskStatus.FAILED):
+                return record
+            worker = self.running_workers.get(task_id)
+            if worker and not worker.done():
+                # Security: a task that is already running is never started twice.
+                pending = [
+                    a
+                    for a in self.list_task_approvals(task_id)
+                    if a.status == ApprovalState.PENDING
+                ]
+                self.set_task_status(
+                    task_id, TaskStatus.AWAITING_APPROVAL if pending else TaskStatus.RUNNING
+                )
+                await self.bus.publish_event(
+                    task_id, "task.resumed", {"from_step": self.current_step_index(task_id)}
+                )
+                return self.get_task_or_404(task_id)
+            if record.status == TaskStatus.FAILED:
+                self.update_task_fields(task_id, verification_attempts=0)
+            # Security: the user may have edited files by hand before resuming, which OWL can't
+            # observe, so earlier verification results (passes and failures) no longer count.
+            self.update_task_fields(task_id, reverify_after=current_utc_time().isoformat())
+            pending = [
+                a for a in self.list_task_approvals(task_id) if a.status == ApprovalState.PENDING
+            ]
+            self.set_task_status(
+                task_id, TaskStatus.AWAITING_APPROVAL if pending else TaskStatus.RUNNING
+            )
+            await self.bus.publish_event(
+                task_id, "task.resumed", {"from_step": self.current_step_index(task_id)}
+            )
+            self.running_workers[task_id] = asyncio.create_task(
+                self.run_task_from_plan_to_finish(task_id)
+            )
+            return self.get_task_or_404(task_id)
 
     async def add_task_message(self, task_id: str, payload: MessageCreate) -> MessageRead:
         self.get_task_or_404(task_id)

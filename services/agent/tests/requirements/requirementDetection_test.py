@@ -160,7 +160,7 @@ def test_requirement_ids_are_stable_and_command_specific(tmp_path):
     assert a.id == b.id
     assert a.timeout == 600.0
     c = detect_verification_requirements(str(tmp_path), timeout=5).requirements[0]
-    assert c.timeout == 5 and c.id == a.id
+    assert c.timeout == 5 and c.id != a.id
 
 
 def test_timeout_kills_whole_process_group(tmp_path):

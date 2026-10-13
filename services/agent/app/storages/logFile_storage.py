@@ -66,14 +66,21 @@ def install_rotating_log_file(logs_dir: str, known_secrets: list[str] | None = N
     handler.set_name(OWL_LOG_HANDLER_NAME)
     handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
     handler.addFilter(SecretScrubbingFilter(known_secrets))
+    for existing in root.handlers:
+        if (
+            isinstance(existing, logging.StreamHandler)
+            and existing.get_name() != OWL_LOG_HANDLER_NAME
+            and not any(isinstance(item, SecretScrubbingFilter) for item in existing.filters)
+        ):
+            existing.addFilter(SecretScrubbingFilter(known_secrets))
     root.addHandler(handler)
     return path
 
 
 def add_known_secret_to_log_filter(secret: str) -> None:
+    if len(secret) < 8:
+        return
     for handler in logging.getLogger().handlers:
-        if handler.get_name() != OWL_LOG_HANDLER_NAME:
-            continue
         for item in handler.filters:
-            if isinstance(item, SecretScrubbingFilter) and len(secret) >= 8:
+            if isinstance(item, SecretScrubbingFilter):
                 item.known_secrets.append(secret)

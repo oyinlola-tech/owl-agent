@@ -137,20 +137,29 @@ class TaskApprovalMixin:
             raise HTTPException(status_code=409, detail="approval already decided")
         if row["expires_at"] and row["expires_at"] < current_utc_time().isoformat():
             # Security: approving after the deadline must not look like it worked.
-            self.conn.execute(
-                "UPDATE approvals SET status = 'expired' WHERE id = ?", (approval_id,)
+            cur = self.conn.execute(
+                "UPDATE approvals SET status = 'expired' WHERE id = ? AND task_id = ?"
+                " AND status = 'pending'",
+                (approval_id, task_id),
             )
             self.conn.commit()
             gate = self.approval_gates.get(task_id)
             if gate is not None:
                 gate.set()
+            if not cur.rowcount:
+                raise HTTPException(status_code=409, detail="approval already decided")
             raise HTTPException(status_code=409, detail="approval expired; resume to ask again")
         state = ApprovalState.APPROVED if payload.approved else ApprovalState.REJECTED
         now = current_utc_time().isoformat()
-        self.conn.execute(
-            "UPDATE approvals SET status = ?, decided_by = ?, decided_at = ? WHERE id = ?",
-            (state.value, payload.by, now, approval_id),
+        # Security: the decision is one guarded UPDATE, so a second decide loses in the DB.
+        cur = self.conn.execute(
+            "UPDATE approvals SET status = ?, decided_by = ?, decided_at = ?"
+            " WHERE id = ? AND task_id = ? AND status = 'pending'",
+            (state.value, payload.by, now, approval_id, task_id),
         )
+        if not cur.rowcount:
+            self.conn.commit()
+            raise HTTPException(status_code=409, detail="approval already decided")
         self.update_task_fields(task_id)
         self.conn.commit()
         gate = self.approval_gates.get(task_id)

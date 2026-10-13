@@ -28,7 +28,8 @@ def read_profile_languages(app: FastAPI) -> list[str]:
         profile = UserProfileStore(conn).read_profile()
         languages = profile.get("languages", [])
         return [str(lang) for lang in languages] if isinstance(languages, list) else []
-    except Exception:
+    except Exception as exc:
+        log.info("stack advisor profile read failed: %s", type(exc).__name__)
         return []
 
 

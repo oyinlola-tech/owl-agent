@@ -244,7 +244,7 @@ npx tauri build          # installers land in src-tauri/target/release/bundle/
 
 ## Usage
 
-1. **First run.** Open OWL. The status bar shows whether the bundled service is online. To use a real model, put `NVIDIA_API_KEY` in a `.env` file in the app data folder (see [Configuration](#configuration)); without it a deterministic mock answers.
+1. **First run.** Open OWL. The status bar shows whether the bundled service is online. To use a real model, put `NVIDIA_API_KEY` in a `.env` file in the app data folder (see [Configuration](#configuration)); without a provider, chat and tasks ask you to connect a model first.
 2. **Open a project.** Use **Projects**, then **Open**. The agent can only touch folders listed in `OWL_WORKSPACES`; with no roots set it cannot read files, run commands, or use Git.
 3. **Run a task.** Describe it on **Home** or in the workspace chat. OWL indexes the project, writes a plan, and shows live activity. Pause or stop at any time.
 4. **Approve.** Gated actions appear in the workspace and in **Inbox** with their risk level, files, and exact command. Approve once or for the task, or reject.

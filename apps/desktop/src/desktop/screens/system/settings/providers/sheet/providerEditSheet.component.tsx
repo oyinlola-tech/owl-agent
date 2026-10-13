@@ -24,6 +24,7 @@ export function ProviderEditSheet({ card, storage, operatingSystem, onClose, onC
   const [model, setModel] = useState(card.model || "auto");
   const [fallbacks, setFallbacks] = useState(card.options.server_fallbacks ?? true);
   const [models, setModels] = useState<string[]>(card.models);
+  const [refreshing, setRefreshing] = useState(false);
   const [test, setTest] = useState<ProviderTestRead | null>(null);
   const [save, setSave] = useState<SaveState>({ phase: "idle" });
   const [error, setError] = useState("");
@@ -46,6 +47,20 @@ export function ProviderEditSheet({ card, storage, operatingSystem, onClose, onC
       setError("The OWL service didn't answer. Start it, then test again.");
     } finally {
       setSave({ phase: "idle" });
+    }
+  };
+
+  const refreshModels = async () => {
+    setRefreshing(true); setError("");
+    try {
+      const result = await agentApi.providerModels(card.id);
+      if (result.models.length) setModels(result.models);
+      if (result.error) setError(result.error);
+      else await onChanged();
+    } catch {
+      setError("Couldn't refresh the model list. Check the service, then try again.");
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -158,13 +173,11 @@ export function ProviderEditSheet({ card, storage, operatingSystem, onClose, onC
             )}
           </div>
 
-          {models.length > 0 && (
-            <label className="pv-field">
-              <span className="label">Model</span>
-              <ModelPicker models={models} value={model} onChange={setModel} />
-              <span className="hint">Auto lets OWL route each task to a fitting model from this provider.</span>
-            </label>
-          )}
+          <label className="pv-field">
+            <span className="label">Model</span>
+            <ModelPicker models={models} value={model} onChange={setModel} onRefresh={() => void refreshModels()} refreshing={refreshing} disabled={busy} />
+            <span className="hint">{models.length ? "Auto lets OWL route each task to a fitting model from this provider." : "No models listed yet — refresh to load what this key can use."}</span>
+          </label>
 
           {card.kind === "anthropic" && (
             <div className="pv-setrow">

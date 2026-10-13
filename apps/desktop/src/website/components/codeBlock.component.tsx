@@ -6,7 +6,8 @@ import "../styles/codeBlock.style.css";
 export function CodeBlock({ code, label }: { code: string; label?: string }) {
   const [copied, setCopied] = useState(false);
   const copyCodeWithoutCommentLines = async () => {
-    const copiedToClipboard = await copyTextToClipboard(code.split("\n").filter((line) => !line.startsWith("#")).join("\n"));
+    const stripped = code.split("\n").filter((line) => !line.startsWith("#")).map((line) => (line.startsWith("$ ") ? line.slice(2) : line)).join("\n");
+    const copiedToClipboard = await copyTextToClipboard(stripped);
     if (!copiedToClipboard) return;
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1600);

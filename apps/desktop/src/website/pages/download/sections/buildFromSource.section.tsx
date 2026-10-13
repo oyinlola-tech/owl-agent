@@ -11,7 +11,7 @@ const REQUIREMENTS: { icon: Icon; label: string; value: string }[] = [
   { icon: Wrench, label: "Rust toolchain", value: "Stable, for the native window" },
   { icon: Terminal, label: "Python", value: "3.11 or newer, for the agent service" },
   { icon: Database, label: "Disk", value: "A few hundred MB including dependencies" },
-  { icon: Key, label: "Model key", value: "NVIDIA_API_KEY, or use the built-in mock" },
+  { icon: Key, label: "Model key", value: "An API key for your model provider" },
 ];
 
 export function BuildFromSourceSection() {

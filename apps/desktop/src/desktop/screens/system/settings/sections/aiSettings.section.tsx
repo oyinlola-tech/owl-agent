@@ -1,25 +1,21 @@
 import { CheckCircle, Cpu, LockKey, ShieldCheck, SpinnerGap, XCircle } from "@phosphor-icons/react";
 import { useAppStore } from "../../../../state/app.store";
 import { Tag } from "../../../../../shared/components/tag.component";
-import { SampleDataBanner } from "../../../../../shared/components/pageLayout.component";
-import { SettingToggleRow, SettingValueRow } from "../settingRow.component";
+import { SettingValueRow } from "../settingRow.component";
 import type { ProviderVerification, SettingsServiceInfo } from "../settingsServiceInfo.hook";
 
 export function AiSettingsSection({ serviceInfo, verification }: { serviceInfo: SettingsServiceInfo; verification: ProviderVerification }) {
-  const liveChatEnabled = useAppStore((s) => s.liveChatEnabled);
-  const setLiveChatEnabled = useAppStore((s) => s.setLiveChatEnabled);
   const preferredModel = useAppStore((s) => s.preferredModel);
   const setPreferredModel = useAppStore((s) => s.setPreferredModel);
   const goToScreen = useAppStore((s) => s.goToScreen);
   const { provider, models } = serviceInfo;
   const { verifying, verdict, verdictOk, verifyProvider } = verification;
-  const providerTag = provider ? provider.configured ? <Tag hue="green" dot>Configured</Tag> : <Tag hue="yellow" dot>Mock</Tag>
+  const providerTag = provider ? provider.configured ? <Tag hue="green" dot>Configured</Tag> : <Tag hue="yellow" dot>Not connected</Tag>
     : <Tag hue="gray" dot>Offline</Tag>;
   const usableModels = models.filter((model) => model.status === "available" || model.status === "verified");
   const selectedModel = models.find((model) => model.id === preferredModel);
   return (
     <>
-      {providerDemo && <SampleDataBanner onRetry={() => void reload()} what="provider details" />}
       <div className="surface pg-setgroup">
         <h4>Provider</h4>
         <SettingValueRow title="Provider" sub={provider ? `${provider.name} · ${provider.model || "default model"}` : "Not connected"}>{providerTag}</SettingValueRow>
@@ -35,7 +31,7 @@ export function AiSettingsSection({ serviceInfo, verification }: { serviceInfo: 
             <span>{verdict}</span>
           </div>
         )}
-        <SettingValueRow title="API key" sub="Set NVIDIA_API_KEY in the service environment. Without it, a deterministic mock answers.">
+        <SettingValueRow title="API key" sub="Add a provider in Settings → AI providers, or set NVIDIA_API_KEY in the service environment.">
           <Tag hue={provider?.configured ? "green" : "gray"} icon={LockKey}>{provider?.configured ? "Present" : "Not set"}</Tag>
         </SettingValueRow>
       </div>
@@ -58,7 +54,6 @@ export function AiSettingsSection({ serviceInfo, verification }: { serviceInfo: 
       </div>
       <div className="surface pg-setgroup">
         <h4>Agent</h4>
-        <SettingToggleRow title="Live model replies" sub="Send chat through the service instead of the sample replay." on={liveChatEnabled} onFlip={() => setLiveChatEnabled(!liveChatEnabled)} />
         <SettingValueRow title="Step limits" sub="Set on the service with OWL_MAX_ITERATIONS, OWL_MAX_MODEL_CALLS, and OWL_MAX_ELAPSED.">
           <span className="pg-mono">25 steps · 40 calls · 30 min</span>
         </SettingValueRow>

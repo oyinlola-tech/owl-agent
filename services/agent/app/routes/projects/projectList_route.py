@@ -4,6 +4,7 @@ from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from ...memories.promptKnowledge_memory import refresh_project_scan_memory
 from ...projects.projectLocation_project import ProjectError
 from ...projects.projectStore_project import ProjectStore, recover_interrupted_commands
 
@@ -44,6 +45,18 @@ def read_project_store(request: Request) -> ProjectStore:
     return request.app.state.projects
 
 
+def refresh_project_scan_best_effort(request: Request, project: dict) -> None:
+    try:
+        refresh_project_scan_memory(
+            request.app.state.manager.memory,
+            str(project["id"]),
+            str(project["name"]),
+            str(project["path"]),
+        )
+    except Exception:
+        pass
+
+
 def create_project_list_router(app: FastAPI) -> APIRouter:
     attach_project_store(app)
     router = APIRouter()
@@ -58,6 +71,7 @@ def create_project_list_router(app: FastAPI) -> APIRouter:
             project, created = read_project_store(request).add_project(payload.path, payload.name)
         except ProjectError as exc:
             return send_project_error(exc)
+        refresh_project_scan_best_effort(request, project)
         return JSONResponse(
             status_code=201 if created else 200, content={"project": project, "created": created}
         )
@@ -79,6 +93,8 @@ def create_project_list_router(app: FastAPI) -> APIRouter:
             )
         except ProjectError as exc:
             return send_project_error(exc)
+        if payload.opened:
+            refresh_project_scan_best_effort(request, project)
         return {"project": project}
 
     @router.delete("/projects/{project_id}")

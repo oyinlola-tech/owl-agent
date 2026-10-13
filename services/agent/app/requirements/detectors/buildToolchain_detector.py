@@ -26,6 +26,7 @@ def detect_go_requirements(workspace: str) -> list[VerificationRequirement]:
             source="project_manifest",
             detail="go.mod",
             required=False,
+            influences=("go.mod", "go.sum"),
         ),
     ]
 
@@ -40,7 +41,7 @@ def detect_rust_requirements(workspace: str) -> list[VerificationRequirement]:
             cwd=".",
             source="project_manifest",
             detail="Cargo.toml",
-            influences=("Cargo.toml", "build.rs"),
+            influences=("Cargo.toml", "Cargo.lock", "build.rs"),
         )
     ]
 

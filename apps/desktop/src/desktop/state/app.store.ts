@@ -107,7 +107,6 @@ export const useAppStore = create<AppState>((set, get) => {
     terminal: [],
     draft: "",
     notice: null,
-    liveChatEnabled: false,
     preferredModel: readStoredValue("owl-model") ?? "auto",
     taskId: null,
     needsProvider: false,
@@ -153,7 +152,6 @@ export const useAppStore = create<AppState>((set, get) => {
     openTask: (openTaskId) => set({ openTaskId, screen: "task" }),
     openBackendTask: (openBackendTaskId) => set({ openBackendTaskId, screen: "btask" }),
     setDraft: (draft) => set({ draft }),
-    setLiveChatEnabled: (liveChatEnabled) => set({ liveChatEnabled }),
     setPreferredModel: (preferredModel) => {
       writeStoredValue("owl-model", preferredModel);
       set({ preferredModel });

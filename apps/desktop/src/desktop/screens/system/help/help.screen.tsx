@@ -34,13 +34,13 @@ const TROUBLESHOOTING_FIXES: { icon: Icon; title: string; body: string; code: st
   },
   {
     icon: ShieldCheck, title: "Provider shows “not configured”",
-    body: "Without a key the service answers with a deterministic mock. Add your NVIDIA key to services/agent/.env, then restart the service. The key is never logged or sent to the app.",
+    body: "Without a key the provider is not configured. Add your NVIDIA key to services/agent/.env, then restart the service. The key is never logged or sent to the app.",
     code: "# services/agent/.env\nNVIDIA_API_KEY=your-key-here",
   },
   {
     icon: FolderOpen, title: "OWL can't read or write project files",
     body: "File, terminal, and git tools only work inside folders you authorize. List each project root, separated by commas, then restart the service.",
-    code: "# services/agent/.env\nOWL_WORKSPACES=/home/you/Projects/zudomart,/home/you/Projects/prooflens",
+    code: "# services/agent/.env\nOWL_WORKSPACES=/home/you/Projects/my-app",
   },
   {
     icon: ClockCounterClockwise, title: "An approval expired before I answered",
@@ -87,7 +87,7 @@ export function HelpScreen() {
     const diagnosticLines = [
       `OWL desktop 0.1.0`,
       `Service URL: ${agentApi.baseUrl}`,
-      `Service: ${health ? `online v${health.version}, provider ${health.provider} (${health.provider_configured ? "configured" : "mock"}), approvals ${health.approvals_enforced ? "enforced" : "not enforced"}` : "offline"}`,
+      `Service: ${health ? `online v${health.version}, provider ${health.provider} (${health.provider_configured ? "configured" : "not configured"}), approvals ${health.approvals_enforced ? "enforced" : "not enforced"}` : "offline"}`,
       `Project open: ${project ? "yes" : "no"}`,
       `User agent: ${navigator.userAgent}`,
       `Time: ${new Date().toISOString()}`,
@@ -134,7 +134,7 @@ export function HelpScreen() {
           {health ? (
             <dl className="x-kv">
               <div><dt>Service</dt><dd><Tag hue="green" dot>Online</Tag> <span className="mono">v{health.version}</span></dd></div>
-              <div><dt>Provider</dt><dd>{health.provider} {health.provider_configured ? <Tag hue="green">Configured</Tag> : <Tag hue="yellow">Mock replies</Tag>}</dd></div>
+              <div><dt>Provider</dt><dd>{health.provider} {health.provider_configured ? <Tag hue="green">Configured</Tag> : <Tag hue="yellow">No provider</Tag>}</dd></div>
               <div><dt>Approvals</dt><dd>{health.approvals_enforced ? <Tag hue="green" icon={ShieldCheck}>Enforced</Tag> : <Tag hue="red">Not enforced</Tag>}</dd></div>
               <div><dt>Address</dt><dd className="mono">{agentApi.baseUrl}</dd></div>
             </dl>

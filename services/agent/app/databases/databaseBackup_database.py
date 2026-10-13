@@ -49,10 +49,13 @@ def copy_database_with_backup_api(source_path: str, target_path: str) -> None:
     temporary = target_path + ".partial"
     if os.path.exists(temporary):
         os.remove(temporary)
+    fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    os.close(fd)
     source = sqlite3.connect(source_path)
     try:
         target = sqlite3.connect(temporary)
         try:
+            make_file_private(temporary)
             source.backup(target)
         finally:
             target.close()

@@ -21,7 +21,7 @@ export function useGlobalShortcuts() {
       } else if (withModifier && key === "j") {
         event.preventDefault();
         toggleTerminal();
-      } else if (withModifier && !event.shiftKey && key === "b") {
+      } else if (withModifier && !event.shiftKey && key === "b" && !isTypingInTextField(event.target)) {
         event.preventDefault();
         useAppStore.getState().toggleFilePanel();
       } else if (withModifier && event.shiftKey && key === "e") {

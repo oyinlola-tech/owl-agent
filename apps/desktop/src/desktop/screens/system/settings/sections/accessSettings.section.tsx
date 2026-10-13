@@ -1,6 +1,5 @@
 import { ArrowRight, ClockCounterClockwise, Copy, FolderOpen, LockKey, ShieldCheck } from "@phosphor-icons/react";
 import { useAppStore } from "../../../../state/app.store";
-import { SampleDataBanner } from "../../../../../shared/components/pageLayout.component";
 import { Tag } from "../../../../../shared/components/tag.component";
 import { copyTextAndNotify } from "../../../../../shared/helpers/clipboard.helper";
 import { SettingToggleRow, SettingValueRow } from "../settingRow.component";
@@ -30,12 +29,11 @@ export function PermissionSettingsSection({ prefs, onTogglePref }: { prefs: Sett
   );
 }
 
-export function WorkspaceSettingsSection({ roots, rootsDemo, onRetry }: { roots: string[]; rootsDemo: boolean; onRetry: () => void }) {
+export function WorkspaceSettingsSection({ roots }: { roots: string[] }) {
   const notify = useAppStore((s) => s.showNotice);
   const exampleRoots = [...roots, "~/Projects/new-app"].join(",");
   return (
     <>
-      {rootsDemo && <SampleDataBanner onRetry={onRetry} what="this list" />}
       <div className="surface pg-setgroup">
         <h4>Authorized folders</h4>
         {roots.length === 0 ? (

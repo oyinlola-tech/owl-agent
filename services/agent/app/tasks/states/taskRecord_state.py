@@ -11,6 +11,29 @@ from ...schemas.task_schema import TaskRead, TaskStatus
 
 
 class TaskRecordMixin:
+    TASK_WRITABLE_COLUMNS = frozenset(
+        {
+            "prompt",
+            "project",
+            "status",
+            "progress",
+            "plan",
+            "step_index",
+            "model",
+            "routing",
+            "failure",
+            "updated_at",
+            "iterations",
+            "model_calls",
+            "workspace",
+            "verification_plan",
+            "verification_attempts",
+            "verification_note",
+            "verified_at",
+            "reverify_after",
+        }
+    )
+
     def fetch_task_row(self, task_id: str) -> sqlite3.Row | None:
         return self.conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
 
@@ -33,6 +56,11 @@ class TaskRecordMixin:
         )
 
     def update_task_fields(self, task_id: str, **fields) -> None:
+        # Security: column names are interpolated into the UPDATE, so only known task
+        # columns may be written; anything else raises instead of touching the database.
+        unknown = sorted(k for k in fields if k not in self.TASK_WRITABLE_COLUMNS)
+        if unknown:
+            raise ValueError(f"unknown task columns: {', '.join(unknown)}")
         fields["updated_at"] = current_utc_time().isoformat()
         sets = ", ".join(f"{k} = ?" for k in fields)
         self.conn.execute(f"UPDATE tasks SET {sets} WHERE id = ?", (*fields.values(), task_id))

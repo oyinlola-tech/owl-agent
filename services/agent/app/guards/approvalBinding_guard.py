@@ -55,7 +55,8 @@ def find_usable_approval_for_action(
     if not rows:
         return None, "no recorded backend approval for this action"
     for row in rows:
-        if row["args_hash"] and row["args_hash"] != wanted:
+        # Security: a row with no bound arguments never authorizes a concrete action.
+        if not row["args_hash"] or row["args_hash"] != wanted:
             continue
         if row["expires_at"] and row["expires_at"] < now.isoformat():
             continue
@@ -67,7 +68,12 @@ def find_usable_approval_for_action(
 
 def mark_approval_consumed(
     conn: sqlite3.Connection, approval_id: str, now: datetime | None = None
-) -> None:
+) -> bool:
+    # Security: the claim is one guarded UPDATE, so exactly one racer wins the row.
     stamp = (now or datetime.now(UTC)).isoformat()
-    conn.execute("UPDATE approvals SET consumed_at = ? WHERE id = ?", (stamp, approval_id))
+    cur = conn.execute(
+        "UPDATE approvals SET consumed_at = ? WHERE id = ? AND consumed_at IS NULL",
+        (stamp, approval_id),
+    )
     conn.commit()
+    return cur.rowcount > 0

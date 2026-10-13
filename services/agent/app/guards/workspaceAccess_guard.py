@@ -79,4 +79,5 @@ class WorkspaceAccessGuard:
         lowered = rel.replace(os.sep, "/")
         if any(p.search("/" + lowered) for p in SENSITIVE_PATH_PATTERNS):
             return True
-        return bool(set(lowered.split("/")) & {".ssh", ".gnupg", ".mozilla", ".pki"})
+        parts = {part.lower() for part in lowered.split("/")}
+        return bool(parts & {".ssh", ".gnupg", ".mozilla", ".pki"})

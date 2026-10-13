@@ -113,6 +113,10 @@ def convert_anthropic_error(exc: Exception, redact) -> ProviderError:
         message = redact_secrets_in_text(redact(str(exc.message or "")))[0][:300]
         return ProviderRequestRejectedError(f"Claude rejected the request: {message}")
     if isinstance(exc, anthropic.APIStatusError):
+        if exc.status_code == 408:
+            return ProviderTimeoutError("Claude request timed out (HTTP 408).")
+        if exc.status_code == 409:
+            return ProviderNetworkError("Claude API error (HTTP 409).")
         if exc.status_code >= 500:
             return ProviderNetworkError(f"Claude API error (HTTP {exc.status_code}).")
         if exc.status_code == 402:

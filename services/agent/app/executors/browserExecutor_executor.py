@@ -78,7 +78,7 @@ def validate_browser_url(
             raise BrowserError(f"resolver returned a bad address for {host}") from exc
         reason = describe_blocked_address(ip, allow_loopback)
         if reason:
-            raise BrowserError(f"{reason} ({host} -> {address})")
+            raise BrowserError(f"{reason} ({host})")
     return raw
 
 

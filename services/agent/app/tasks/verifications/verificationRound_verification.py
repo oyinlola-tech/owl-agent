@@ -197,5 +197,7 @@ class VerificationRoundMixin:
             self.approval_gates.pop(task_id, None)
         if row is None:
             return "expired" if expired else "declined"
-        mark_approval_consumed(self.conn, str(row["id"]))
+        # Security: the loser of the consume race treats the approval as unusable.
+        if not mark_approval_consumed(self.conn, str(row["id"])):
+            return "expired"
         return "approved"

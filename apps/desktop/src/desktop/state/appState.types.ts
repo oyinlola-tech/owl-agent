@@ -40,7 +40,6 @@ export interface AppState {
   terminal: TermLine[];
   draft: string;
   notice: string | null;
-  liveChatEnabled: boolean;
   preferredModel: string;
   taskId: string | null;
   needsProvider: boolean;
@@ -73,7 +72,6 @@ export interface AppState {
   openTask: (id: string) => void;
   openBackendTask: (id: string) => void;
   setDraft: (d: string) => void;
-  setLiveChatEnabled: (v: boolean) => void;
   setPreferredModel: (m: string) => void;
   sendWorkspaceMessage: () => void;
   attachTaskStream: (taskId: string) => void;

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 
 from ...databases.recordStamp_database import create_prefixed_id
+from ...guards.secretScrub_guard import redact_secrets_in_text
 from ..browserExecutor_executor import BrowserError, validate_browser_url
 from .browserSession_executor import (
     DEFAULT_VIEWPORT_HEIGHT,
@@ -12,6 +14,8 @@ from .browserSession_executor import (
 )
 
 MAX_TOTAL_SESSIONS = 8
+
+log = logging.getLogger("owl")
 
 
 class BrowserSessionManager:
@@ -96,8 +100,9 @@ class BrowserSessionManager:
             return False
         try:
             await session.close()
-        except Exception:
-            pass
+        except Exception as exc:
+            cleaned, _ = redact_secrets_in_text(str(exc))
+            log.debug("browser session close failed: %s", cleaned)
         return True
 
     async def close_task_sessions(self, task_id: str) -> bool:

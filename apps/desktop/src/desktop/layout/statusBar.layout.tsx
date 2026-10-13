@@ -42,7 +42,7 @@ export function StatusBar({ onOpenCommandPalette }: { onOpenCommandPalette: () =
   const serviceLabel = serviceLocked ? "Service locked" : serviceState === "unknown" ? "Checking service" : serviceState === "online" ? `Service v${serviceVersion}` : "Service offline";
   const serviceTitle = serviceLocked
     ? "The OWL service refused this app's token. Select to retry."
-    : serviceState === "online" ? `Python service online (v${serviceVersion})` : "Python service unreachable, running in mock mode. Select to retry.";
+    : serviceState === "online" ? `Python service online (v${serviceVersion})` : "Python service unreachable. Check the service and select to retry.";
   return (
     <footer className="statusbar">
       <button onClick={() => { goToScreen("workspace"); useAppStore.getState().setCenterTab("changes"); }} title="Review changes">

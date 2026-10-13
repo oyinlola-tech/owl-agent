@@ -186,7 +186,10 @@ class ProviderSetupService(ProviderSwitchboard):
                 model_count=len(models),
                 models=sorted(models)[:MAX_LISTED_MODELS],
             )
-        if candidate_key is None and address is None:
+        if error is None or (candidate_key is None and address is None):
+            # Security: a successful probe always refreshes the stored model list, so
+            # Test-then-Save keeps the live models; a failed candidate probe never
+            # overwrites the last good state.
             self.record_test_outcome(preset, models, error)
         return result, error
 
@@ -194,7 +197,12 @@ class ProviderSetupService(ProviderSwitchboard):
         now = current_utc_time().isoformat()
         if error is None:
             self.config.save_provider_settings(
-                preset.id, models=models, last_status="connected", last_error="", checked_at=now
+                preset.id,
+                models=models,
+                options={"models_fetched_at": now},
+                last_status="connected",
+                last_error="",
+                checked_at=now,
             )
             return
         local_down = preset.id in LOCAL_PROVIDER_IDS and isinstance(error, ProviderNetworkError)

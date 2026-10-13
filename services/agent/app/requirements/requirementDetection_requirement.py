@@ -15,6 +15,7 @@ from .detectors.dotnet.dotnetProject_detector import detect_dotnet_requirements
 from .detectors.functional.elixirMix_detector import detect_elixir_requirements
 from .detectors.functional.haskellBuild_detector import detect_haskell_requirements
 from .detectors.jvm.jvmBuild_detector import (
+    detect_kotlin_requirements,
     detect_maven_gradle_requirements,
     detect_scala_sbt_requirements,
 )
@@ -41,6 +42,7 @@ LANGUAGE_DETECTORS: tuple[Callable[[str], list[VerificationRequirement]], ...] =
     detect_go_requirements,
     detect_rust_requirements,
     detect_maven_gradle_requirements,
+    detect_kotlin_requirements,
     detect_scala_sbt_requirements,
     detect_cmake_requirements,
     detect_swift_requirements,
@@ -69,7 +71,9 @@ def detect_verification_requirements(workspace: str, timeout: float = 600.0) -> 
         for detector in FALLBACK_DETECTORS:
             found.extend(detector(workspace))
     found = [
-        VerificationRequirement(**{**asdict(r), "timeout": timeout}) if r.timeout != timeout else r
+        VerificationRequirement(**{**asdict(r), "timeout": timeout, "id": ""})
+        if r.timeout != timeout
+        else r
         for r in found
     ]
     found.sort(key=lambda r: (REQUIREMENT_KIND_ORDER.get(r.kind, 9), r.label))
@@ -86,8 +90,16 @@ def detect_verification_requirements(workspace: str, timeout: float = 600.0) -> 
     return DetectionResult(found)
 
 
+def _taint_matches(pattern: str, path: str) -> bool:
+    if fnmatch(path, pattern):
+        return True
+    if "/" not in pattern and fnmatch(path, "*/" + pattern):
+        return True
+    return False
+
+
 def find_tainting_changes(req: VerificationRequirement, changed: list[str]) -> list[str]:
-    return sorted({path for path in changed for pat in req.influences if fnmatch(path, pat)})
+    return sorted({path for path in changed for pat in req.influences if _taint_matches(pat, path)})
 
 
 def detect_first_test_command(workspace: str) -> tuple[list[str], str] | None:

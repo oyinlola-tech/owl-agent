@@ -76,6 +76,7 @@ def make_legacy_database(path) -> None:
     )
     conn.commit()
     conn.close()
+    os.chmod(path, 0o600)
 
 
 def test_legacy_xdg_database_is_copied_once_and_kept(monkeypatch, tmp_path):

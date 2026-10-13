@@ -39,7 +39,6 @@ const SETTINGS_SECTIONS: { name: SettingsSectionName; icon: Icon }[] = [
 
 export function SettingsScreen() {
   const [activeSection, setActiveSection] = useState<SettingsSectionName>("General");
-  const liveChatEnabled = useAppStore((s) => s.liveChatEnabled);
   const preferredModel = useAppStore((s) => s.preferredModel);
   const notify = useAppStore((s) => s.showNotice);
   const askForConfirmation = useAppStore((s) => s.askForConfirmation);
@@ -49,7 +48,7 @@ export function SettingsScreen() {
   const [startScreen, setStartScreen] = useState(readStartScreen);
   const [prefs, setPrefs] = useState<SettingsPrefs>(readSettingsPrefs);
   const [notificationPermission, setNotificationPermission] = useState<string>(() => ("Notification" in window ? Notification.permission : "unsupported"));
-  const { provider, providerDemo, health, reload } = serviceInfo;
+  const { provider, health } = serviceInfo;
 
   useEffect(() => { document.documentElement.toggleAttribute("data-motion-reduce", prefs.motion); }, [prefs.motion]);
 
@@ -79,9 +78,8 @@ export function SettingsScreen() {
   const copyDiagnostics = () => copyTextAndNotify([
     "OWL Agent 0.1.0",
     `Service: ${agentApi.baseUrl} (${health})`,
-    `Provider: ${provider ? `${provider.name} · ${provider.model} · ${provider.configured ? "configured" : "mock"}` : "unknown"}${providerDemo ? " [sample]" : ""}`,
+    `Provider: ${provider ? `${provider.name} · ${provider.model} · ${provider.configured ? "configured" : "not connected"}` : "unknown"}`,
     `Model preference: ${preferredModel}`,
-    `Live chat: ${liveChatEnabled ? "on" : "off"}`,
     `User agent: ${navigator.userAgent}`,
   ].join("\n"), notify, "Diagnostics copied");
 
@@ -105,9 +103,7 @@ export function SettingsScreen() {
           {activeSection === "AI providers" && <AiProvidersSettingsSection />}
           {activeSection === "AI" && <AiSettingsSection serviceInfo={serviceInfo} verification={verification} />}
           {activeSection === "Permissions" && <PermissionSettingsSection prefs={prefs} onTogglePref={togglePref} />}
-          {activeSection === "Workspaces" && (
-            <WorkspaceSettingsSection roots={serviceInfo.roots} rootsDemo={serviceInfo.rootsDemo} onRetry={() => void reload()} />
-          )}
+          {activeSection === "Workspaces" && <WorkspaceSettingsSection roots={serviceInfo.roots} />}
           {activeSection === "Security" && <SecuritySettingsSection />}
           {activeSection === "Git" && <GitSettingsSection prefs={prefs} onTogglePref={togglePref} />}
           {activeSection === "Data" && <DataSettingsSection />}

@@ -27,13 +27,18 @@ export function PlaybookDrawer({
   const [starting, setStarting] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => { setPrompt(filledPrompt); }, [filledPrompt]);
   useEffect(() => {
     closeButtonRef.current?.focus();
-    const closeOnEscape = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+  }, []);
+  useEffect(() => {
+    const closeOnEscape = (e: KeyboardEvent) => { if (e.key === "Escape") onCloseRef.current(); };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [onClose]);
+  }, []);
 
   return createPortal(
     <div className="x-drawer-overlay" onClick={onClose}>

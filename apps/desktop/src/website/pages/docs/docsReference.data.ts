@@ -36,7 +36,7 @@ export const ENVIRONMENT_VARIABLES: { name: string; def: string; what: string }[
   { name: "OWL_CONTEXT_BUDGET / OWL_CONTEXT_RESERVE", def: "—", what: "Token budget per request and the share kept free for the reply." },
   { name: "OWL_MAX_RETRIES", def: "—", what: "Retries for a failed model call." },
   { name: "OWL_MEMORY_RETENTION", def: "—", what: "How many memory history entries are kept." },
-  { name: "NVIDIA_API_KEY", def: "(none)", what: "Enables the real provider. Without it a deterministic mock answers. Never logged or returned." },
+  { name: "NVIDIA_API_KEY", def: "(none)", what: "Enables the configured provider. Without a provider, chat and tasks ask you to connect a model first. Never logged or returned." },
 ];
 
 export const KEYBOARD_SHORTCUTS: { keys: string[]; what: string }[] = [

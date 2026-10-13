@@ -123,10 +123,11 @@ def test_approval_expiry(tmp_path):
 def test_task_scope_not_consumed(tmp_path):
     conn = open_database(":memory:")
     now = "2030-01-01T00:00:00+00:00"
+    bound = hash_action_with_arguments("exec_run", {})
     conn.execute(
         "INSERT INTO approvals (id, task_id, title, kind, status, action, args_hash,"
         " scope, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        ("a3", "t1", "Run", "command", "approved", "exec_run", "", "task", now),
+        ("a3", "t1", "Run", "command", "approved", "exec_run", bound, "task", now),
     )
     conn.commit()
     row, _ = find_usable_approval_for_action(conn, "t1", "exec_run", {})

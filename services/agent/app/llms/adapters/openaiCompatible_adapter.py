@@ -106,11 +106,13 @@ class OpenAICompatibleProvider(ModelProvider):
 
     def remember_usage(self, usage: object) -> None:
         if isinstance(usage, dict) and isinstance(usage.get("prompt_tokens"), int):
-            self._usage = {
-                "input": usage.get("prompt_tokens", 0),
-                "output": usage.get("completion_tokens", 0) or 0,
-                "estimated": False,
-            }
+            self._store_usage(
+                {
+                    "input": usage.get("prompt_tokens", 0),
+                    "output": usage.get("completion_tokens", 0) or 0,
+                    "estimated": False,
+                }
+            )
 
     async def complete(self, messages: list[dict[str, str]], model: str | None = None) -> str:
         self.ensure_ready_for_request()

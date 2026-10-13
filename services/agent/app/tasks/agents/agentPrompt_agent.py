@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import json
 
 from ...contexts.contextBudget_context import ContextPart
@@ -13,16 +12,6 @@ from ..taskRule_task import SYSTEM_INSTRUCTIONS
 class AgentPromptMixin:
     PLAN_MARKER = "RETURN-JSON-PLAN"
     NEXT_MARKER = "NEXT-ACTION"
-
-    async def wait_while_paused(self, task_id: str, total: float) -> None:
-        elapsed = 0.0
-        while elapsed < total:
-            row = self.fetch_task_row(task_id)
-            if row and TaskStatus(row["status"]) == TaskStatus.PAUSED:
-                await asyncio.sleep(0.05)
-                continue
-            await asyncio.sleep(0.05)
-            elapsed += 0.05
 
     async def publish_progress(self, task_id: str, progress: int, label: str) -> None:
         self.update_task_fields(task_id, progress=progress)
@@ -121,10 +110,10 @@ class AgentPromptMixin:
         rows = self.conn.execute(
             "SELECT id, step, tool, args_json, approval_id, status, exit_code,"
             " duration_ms, output_excerpt, created_at FROM tool_calls"
-            " WHERE task_id = ? ORDER BY created_at",
+            " WHERE task_id = ? ORDER BY created_at DESC LIMIT 200",
             (task_id,),
         ).fetchall()
-        return [dict(r) for r in rows]
+        return [dict(r) for r in reversed(rows)]
 
     def list_task_usage(self, task_id: str) -> list[dict]:
         self.get_task_or_404(task_id)

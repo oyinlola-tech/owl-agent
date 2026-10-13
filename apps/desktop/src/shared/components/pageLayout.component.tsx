@@ -56,12 +56,3 @@ export function SectionTitle({ children, count, actions }: { children: ReactNode
   );
 }
 
-export function SampleDataBanner({ onRetry, what = "this list" }: { onRetry?: () => void; what?: string }) {
-  return (
-    <div className="demo-banner" role="status">
-      <span className="demo-dot" />
-      <span><b>Sample data.</b> The OWL service is offline, so {what} shows example work. Start the service to see your own.</span>
-      {onRetry && <button className="btn btn-sm btn-secondary" onClick={onRetry}>Retry</button>}
-    </div>
-  );
-}

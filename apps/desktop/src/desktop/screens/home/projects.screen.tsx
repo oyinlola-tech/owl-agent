@@ -12,6 +12,7 @@ import { Tag, Tile } from "../../../shared/components/tag.component";
 import { copyTextAndNotify } from "../../../shared/helpers/clipboard.helper";
 import { formatShortTimeAgo } from "../../../shared/helpers/time.helper";
 import { hueForName, stackLabel } from "./projectStyle.helper";
+import { StackAdvisorComponent } from "./stackAdvisor.component";
 import "./styles/projects.style.css";
 
 type ProjectSortOrder = "recent" | "name";
@@ -101,11 +102,14 @@ export function ProjectsScreen() {
           {status === "loading" ? (
             <div className="side-note" style={{ padding: 24 }}>Loading projects…</div>
           ) : visibleProjects.length === 0 ? (
+            <>
             <EmptyState icon={MagnifyingGlass} title={searchQuery ? `No projects match "${searchQuery}"` : "No projects in OWL yet"}
               body={searchQuery ? "Check the spelling, or add a folder with that name." : "Point OWL at a folder on this computer. It only reads and writes inside the folders you choose."}>
               {searchQuery && <button className="btn btn-secondary" onClick={() => setSearchQuery("")}>Clear search</button>}
               <button className="btn btn-primary" onClick={() => setCreateProjectOpen(true)}><Plus size={14} weight="bold" /> {searchQuery ? "Add project" : "Open your first project"}</button>
             </EmptyState>
+            {!searchQuery && <StackAdvisorComponent onPick={(stackId) => showNotice(`Picked ${stackId}. Add a project folder to use it.`)} />}
+            </>
           ) : view === "gallery" ? (
             <div className="pg-gallery">
               {visibleProjects.map((project) => {

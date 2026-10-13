@@ -511,3 +511,33 @@ export interface SecurityStatusRead {
   };
   browser: { blocked: string[]; schemes: string[] };
 }
+
+export interface StackEntry {
+  id: string;
+  name: string;
+  languages: string[];
+  frameworks: string[];
+  [key: string]: unknown;
+}
+
+export interface StackCatalogRead {
+  count: number;
+  stacks: StackEntry[];
+}
+
+export interface StackRecommendation {
+  stack: StackEntry;
+  fit_score: number;
+  why: string;
+  tradeoffs: string[];
+  vs_runner_up: string;
+  starter_command: string;
+  verification_commands: string[];
+  owl_support: string;
+  experience_note: string;
+}
+
+export interface StackRecommendRead {
+  ranked_by: string;
+  recommendations: StackRecommendation[];
+}

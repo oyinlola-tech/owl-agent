@@ -4,9 +4,11 @@ import asyncio
 import logging
 import sqlite3
 from collections.abc import Callable
+from datetime import datetime
 
 import httpx
 
+from ..databases.recordStamp_database import current_utc_time
 from ..settings.serviceSettings_setting import Settings
 from .adapters.anthropic_adapter import AnthropicProvider
 from .adapters.openaiCompatible_adapter import OpenAICompatibleProvider
@@ -17,10 +19,37 @@ from .modelRegistry_llm import ModelRegistry
 from .modelRouter_llm import ModelRouter
 from .providers.baseProvider_provider import ActiveProvider, ModelProvider, UnconfiguredProvider
 from .providers.mockProvider_provider import MockProvider
-from .providers.nvidiaProvider_provider import NvidiaProvider
 from .providers.providerError_provider import ProviderError
 
 log = logging.getLogger("owl")
+
+MODEL_LIST_STALE_SECONDS = 7 * 24 * 3600
+
+
+def read_models_fetched_at(saved: dict) -> datetime | None:
+    raw = saved.get("options", {}).get("models_fetched_at")
+    if not isinstance(raw, str) or not raw:
+        return None
+    try:
+        parsed = datetime.fromisoformat(raw)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return None
+    return parsed
+
+
+def models_cache_is_stale(saved: dict) -> bool:
+    if not saved.get("models"):
+        return False
+    fetched_at = read_models_fetched_at(saved)
+    if fetched_at is None:
+        return True
+    try:
+        age = (current_utc_time() - fetched_at).total_seconds()
+    except TypeError:
+        return True
+    return age >= MODEL_LIST_STALE_SECONDS
 
 
 class ProviderSetupError(Exception):
@@ -113,8 +142,20 @@ class ProviderSwitchboard:
                 redact=self.keys.redact,
                 client=factory(key) if factory and key else None,
             )
-        if preset.id == "nvidia" and base_url is None:
-            return NvidiaProvider(self.settings, self.transport, api_key=key, model=chosen)
+        if preset.id == "nvidia":
+            return OpenAICompatibleProvider(
+                provider_id=preset.id,
+                label=preset.label,
+                base_url=address,
+                api_key=key,
+                model=chosen,
+                requires_key=preset.requires_key,
+                timeout=self.settings.nvidia_timeout,
+                max_tokens=self.settings.nvidia_max_tokens,
+                max_tokens_field=preset.max_tokens_field,
+                temperature=self.settings.nvidia_temperature,
+                transport=self.transport,
+            )
         return OpenAICompatibleProvider(
             provider_id=preset.id,
             label=preset.label,
@@ -190,13 +231,19 @@ class ProviderSwitchboard:
         if not provider.describe().get("configured"):
             code = "key_missing" if preset.requires_key else "base_url_missing"
             raise ProviderSetupError(412, code, f"{preset.label} isn't set up yet.")
-        models = self.config.read_provider_settings(provider_id)["models"]
-        if not models:
+        saved = self.config.read_provider_settings(provider_id)
+        models = saved["models"]
+        if not models or models_cache_is_stale(saved):
             try:
                 models = await provider.list_models()
-                self.config.save_provider_settings(provider_id, models=models)
+                self.config.save_provider_settings(
+                    provider_id,
+                    models=models,
+                    options={"models_fetched_at": current_utc_time().isoformat()},
+                )
             except ProviderError as exc:
                 log.info("model list for %s unavailable: %s", provider_id, type(exc).__name__)
+                models = saved["models"]
         chosen = self.apply_provider(provider, provider_id, models)
         self.config.save_active_provider_id(provider_id)
         return chosen

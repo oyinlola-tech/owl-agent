@@ -40,7 +40,9 @@ def detect_python_requirements(workspace: str) -> list[VerificationRequirement]:
         pytest_evidence = "conftest.py"
     elif re.search(
         r"\bpytest\b",
-        pyproject_text + read_text_file_or_empty(os.path.join(workspace, "requirements-dev.txt")),
+        pyproject_text
+        + read_text_file_or_empty(os.path.join(workspace, "requirements.txt"))
+        + read_text_file_or_empty(os.path.join(workspace, "requirements-dev.txt")),
     ):
         pytest_evidence = "pytest listed as a dependency"
     else:

@@ -65,7 +65,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         or settings.nvidia_model
         or provider.describe().get("model", "")
     )
-    registry.save_model(str(default_model or "mock-1"), status="available", capabilities=["chat"])
+    if default_model:
+        registry.save_model(str(default_model), status="available", capabilities=["chat"])
     router = ModelRouter(
         registry,
         default_model=str(default_model or ""),

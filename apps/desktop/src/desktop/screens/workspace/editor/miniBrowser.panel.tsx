@@ -26,7 +26,7 @@ export function MiniBrowserPanel() {
           <button className="btn btn-ghost btn-icon btn-sm" aria-label="Forward" disabled><ArrowRight size={14} /></button>
           <button className="btn btn-ghost btn-icon btn-sm" aria-label="Reload" onClick={() => setReloadCount((count) => count + 1)}><ArrowClockwise size={14} /></button>
         </span>
-        <span className="mb-url mono"><LockSimple size={12} weight="fill" /> localhost:3000</span>
+        <span className="mb-url mono"><LockSimple size={12} weight="fill" /> Preview</span>
         <div className="seg" role="group" aria-label="Viewport width">
           {VIEWPORT_PRESETS.map((preset) => (
             <button key={preset.width} aria-pressed={viewportWidth === preset.width} onClick={() => setViewportWidth(preset.width)} title={`${preset.label} · ${preset.width}px`}>
@@ -48,13 +48,10 @@ export function MiniBrowserPanel() {
             </div>
           ) : (
             <div className="mb-page">
-              <div className="mb-page-nav"><b>ZudoMart</b><span>Shop</span><span>Deals</span><span>Account</span></div>
               <div className="mb-page-hero">
-                <h3>Groceries in 20 minutes</h3>
-                <p>Preview at {viewportWidth}px · dev server on port 3000</p>
-                <span className="mb-page-btn">Start shopping</span>
+                <h3>No preview loaded</h3>
+                <p>Open a local build to preview it here</p>
               </div>
-              <div className="mb-page-cards"><i /><i /><i /></div>
             </div>
           )}
         </div>

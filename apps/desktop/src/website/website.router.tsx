@@ -10,6 +10,9 @@ import { DownloadPage } from "./pages/download/download.page";
 import { NotFoundPage } from "./pages/notFound.page";
 import { AppLauncherPage } from "./pages/launcher/appLauncher.page";
 import { forgetAppWasNotFound } from "./pages/launcher/appLauncher.helper";
+import {
+  STABLE_DOWNLOADS, stableDownloadGithubUrl, type StableDownloadTarget,
+} from "./pages/download/links/stableDownloadLink.helper";
 import "./styles/site.style.css";
 
 const PAGE_TITLES: Record<string, string> = {
@@ -22,8 +25,27 @@ const PAGE_TITLES: Record<string, string> = {
 
 const APP_LAUNCHER_TITLE = "Opening OWL — OWL";
 
+function StableDownloadRedirect({ target }: { target: string }) {
+  const known = STABLE_DOWNLOADS[target as StableDownloadTarget] !== undefined;
+  useEffect(() => {
+    if (!known) return;
+    document.title = "Downloading OWL";
+    window.location.replace(stableDownloadGithubUrl(target as StableDownloadTarget));
+  }, [known, target]);
+  if (!known) return <NotFoundPage path={`/download/${target}`} />;
+  const url = stableDownloadGithubUrl(target as StableDownloadTarget);
+  return (
+    <div className="wrap">
+      <p>Starting your download… if nothing happens, <a href={url}>download directly from GitHub</a>.</p>
+    </div>
+  );
+}
+
 function pageForPath(cleanPath: string, originalPath: string): ReactNode {
   if (isDesktopAppPath(cleanPath)) return <AppLauncherPage path={cleanPath} />;
+  if (cleanPath.startsWith("/download/")) {
+    return <StableDownloadRedirect target={cleanPath.slice("/download/".length)} />;
+  }
   switch (cleanPath) {
     case "/": return <HomePage />;
     case "/docs": return <DocsPage />;

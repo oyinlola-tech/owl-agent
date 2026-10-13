@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 
+from ...guards.secretScrub_guard import redact_secrets_in_text
 from ..browserExecutor_executor import validate_browser_url
 from .browserInteraction_executor import resolve_locator
 from .browserSession_executor import (
@@ -11,6 +13,8 @@ from .browserSession_executor import (
     as_browser_action,
     origin_of,
 )
+
+log = logging.getLogger("owl")
 
 
 def sanitize_download_name(name: str) -> str:
@@ -33,8 +37,9 @@ async def submit_form(session: IsolatedBrowserSession, target: str) -> dict:
                 await locator.evaluate("f => (f.requestSubmit ? f.requestSubmit() : f.submit())")
             else:
                 await locator.click(timeout=ACTION_TIMEOUT_MS)
-    except Exception:
-        pass
+    except Exception as exc:
+        cleaned, _ = redact_secrets_in_text(str(exc))
+        log.debug("browser submit navigation wait failed: %s", cleaned)
     # Security: the destination after a submit is re-checked against the SSRF guard.
     await asyncio.to_thread(
         validate_browser_url, session.page.url, allow_loopback=session.allow_loopback

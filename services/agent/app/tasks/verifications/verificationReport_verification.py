@@ -36,10 +36,11 @@ class VerificationReportMixin:
     def list_verification_runs(self, task_id: str) -> list[dict]:
         self.get_task_or_404(task_id)
         rows = self.conn.execute(
-            "SELECT * FROM verification_runs WHERE task_id = ? ORDER BY started_at", (task_id,)
+            "SELECT * FROM verification_runs WHERE task_id = ? ORDER BY started_at DESC LIMIT 200",
+            (task_id,),
         ).fetchall()
         out = []
-        for r in rows:
+        for r in reversed(rows):
             item = dict(r)
             item["command"] = json.loads(item.pop("command_json"))
             item["required"] = bool(item["required"])

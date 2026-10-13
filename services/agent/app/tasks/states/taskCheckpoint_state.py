@@ -8,16 +8,33 @@ from ...databases.recordStamp_database import create_prefixed_id, current_utc_ti
 from ...schemas.task_schema import TaskStatus
 
 
-def kill_orphaned_verification_process(pid: int, argv: list[str]) -> None:
+def kill_orphaned_verification_process(
+    pid: int, argv: list[str], working_directory: str = ""
+) -> None:
     # Security: pids get reused, so only kill the process when /proc/<pid>/cmdline still
-    # matches the recorded verification command.
+    # matches the recorded verification command. Sandbox and interpreter wrappers prepend
+    # argv elements, so an exact tail match wins first and a cwd-plus-final-command match
+    # is the fallback; anything else is left alone.
+    if pid <= 0 or not argv:
+        return
     try:
         with open(f"/proc/{pid}/cmdline", "rb") as fh:
             running = [p.decode("utf-8", "replace") for p in fh.read().split(b"\0") if p]
     except OSError:
         return
-    if running[-len(argv) :] != argv and running != argv:
+    if not running:
         return
+    if running[-len(argv) :] != argv and running != argv:
+        if not working_directory:
+            return
+        try:
+            actual_cwd = os.readlink(f"/proc/{pid}/cwd")
+        except OSError:
+            return
+        if os.path.realpath(actual_cwd) != os.path.realpath(working_directory):
+            return
+        if running[-1] != argv[-1]:
+            return
     try:
         os.killpg(pid, signal.SIGKILL)
     except (ProcessLookupError, PermissionError):
@@ -60,7 +77,8 @@ class TaskCheckpointMixin:
     def list_checkpoints(self, task_id: str) -> list[dict]:
         self.get_task_or_404(task_id)
         rows = self.conn.execute(
-            "SELECT * FROM checkpoints WHERE task_id = ? ORDER BY created_at", (task_id,)
+            "SELECT * FROM checkpoints WHERE task_id = ? ORDER BY created_at DESC LIMIT 200",
+            (task_id,),
         ).fetchall()
         return [
             {
@@ -69,18 +87,20 @@ class TaskCheckpointMixin:
                 "state": json.loads(r["state"]),
                 "created_at": r["created_at"],
             }
-            for r in rows
+            for r in reversed(rows)
         ]
 
     def recover_interrupted_tasks(self) -> list[str]:
         # Security: interrupted tasks are paused, never auto-resumed. A check that was mid-run
         # when the service stopped proved nothing; if its process outlived the service, stop it.
         for orphan in self.conn.execute(
-            "SELECT pid, command_json FROM verification_runs"
+            "SELECT pid, command_json, working_directory FROM verification_runs"
             " WHERE status = 'running' AND pid IS NOT NULL"
         ).fetchall():
             kill_orphaned_verification_process(
-                int(orphan["pid"]), json.loads(orphan["command_json"])
+                int(orphan["pid"]),
+                json.loads(orphan["command_json"]),
+                str(orphan["working_directory"] or ""),
             )
         self.conn.execute(
             "UPDATE verification_runs SET status = 'interrupted', completed_at = ?,"

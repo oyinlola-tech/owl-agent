@@ -154,7 +154,7 @@ def list_change_journal(conn: sqlite3.Connection, task_id: str) -> list[dict]:
     rows = conn.execute(
         "SELECT id, path, approval_id, applied_at, reverted_at,"
         " length(before_text) AS before_bytes, length(after_text) AS after_bytes"
-        " FROM change_journal WHERE task_id = ? ORDER BY applied_at",
+        " FROM change_journal WHERE task_id = ? ORDER BY applied_at DESC LIMIT 200",
         (task_id,),
     ).fetchall()
-    return [dict(r) for r in rows]
+    return [dict(r) for r in reversed(rows)]
