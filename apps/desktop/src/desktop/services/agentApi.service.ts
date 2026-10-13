@@ -85,6 +85,15 @@ export const agentApi = {
     request<CommitMessageDraft>(`/projects/${encodeURIComponent(id)}/git/commit-message`, { method: "POST" }),
   gitCommit: (id: string, files: string[], message: string) =>
     request<Record<string, unknown>>(`/projects/${encodeURIComponent(id)}/git/commit`, { method: "POST", body: JSON.stringify({ files, message }) }),
+  gitPush: (id: string, body: { remote?: string; branch?: string; confirm: boolean }) =>
+    request<{ pushed: boolean; branch: string; remote: string; ahead: number; behind: number }>(`/projects/${encodeURIComponent(id)}/git/push`, { method: "POST", body: JSON.stringify(body) }),
+  gitPull: (id: string, body: { remote?: string; branch?: string; confirm: boolean }) =>
+    request<{ pulled: boolean; branch: string; remote: string; ahead: number; behind: number }>(`/projects/${encodeURIComponent(id)}/git/pull`, { method: "POST", body: JSON.stringify(body) }),
+  gitSync: async (id: string, body: { remote?: string; branch?: string; confirm: boolean }) => {
+    const pulled = await request<{ pulled: boolean; branch: string; remote: string; ahead: number; behind: number }>(`/projects/${encodeURIComponent(id)}/git/pull`, { method: "POST", body: JSON.stringify(body) });
+    const pushed = await request<{ pushed: boolean; branch: string; remote: string; ahead: number; behind: number }>(`/projects/${encodeURIComponent(id)}/git/push`, { method: "POST", body: JSON.stringify(body) });
+    return { pulled, pushed };
+  },
   commandHistory: (id: string, limit = 50) =>
     request<{ commands: CommandRow[] }>(`/projects/${encodeURIComponent(id)}/commands${query({ limit: String(limit) })}`),
   dataStatus: () => request<DataStatus>("/data/status"),

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  ArrowRight, ArrowSquareOut, BookOpen, Bug, CaretRight, CheckCircle, Circle, ClockCounterClockwise,
-  FolderOpen, GitDiff, Keyboard, Lifebuoy, Notebook, Play, Question, ShieldCheck, Tray, Wrench,
+  ArrowClockwise, ArrowRight, ArrowSquareOut, BookOpen, Bug, CaretRight, CheckCircle, Circle, ClockCounterClockwise,
+  DownloadSimple, FolderOpen, GitDiff, Keyboard, Lifebuoy, Notebook, Play, Question, ShieldCheck, Tray, Wrench,
   type Icon,
 } from "@phosphor-icons/react";
 import { useAppStore } from "../../../state/app.store";
@@ -13,6 +13,7 @@ import type { AppScreen } from "../../../state/workspace.types";
 import "./help.style.css";
 import { CommandBlock } from "../../../components/commandBlock.component";
 import { copyTextAndNotify } from "../../../../shared/helpers/clipboard.helper";
+import { APP_DOWNLOAD_URL, APP_VERSION, checkForAppUpdate, type UpdateCheckState } from "../../../../shared/helpers/updateCheck.helper";
 
 const KEYBOARD_SHORTCUTS: { keys: string[]; what: string }[] = [
   { keys: ["Ctrl", "K"], what: "Ask OWL from anywhere" },
@@ -59,6 +60,7 @@ export function HelpScreen() {
   const [health, setHealth] = useState<HealthRead | null>(null);
   const [offline, setOffline] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [update, setUpdate] = useState<UpdateCheckState>({ status: "idle" });
 
   const checkServiceHealth = useCallback(async () => {
     setChecking(true);
@@ -74,6 +76,11 @@ export function HelpScreen() {
   }, []);
   useEffect(() => { void checkServiceHealth(); }, [checkServiceHealth]);
 
+  const checkForUpdates = useCallback(async () => {
+    setUpdate({ status: "checking" });
+    setUpdate(await checkForAppUpdate());
+  }, []);
+
   const gettingStartedSteps: { done: boolean; title: string; body: string; icon: Icon; to: AppScreen; cta: string }[] = [
     { done: Boolean(project), title: "Open a project", body: "Pick the folder OWL may work in.", icon: FolderOpen, to: "projects", cta: "Projects" },
     { done: agentEvents.length > 0, title: "Run a task", body: "Describe the job; OWL reads first and shows a plan.", icon: Play, to: "workspace", cta: "Workspace" },
@@ -85,7 +92,7 @@ export function HelpScreen() {
 
   const copyDiagnostics = () => {
     const diagnosticLines = [
-      `OWL desktop 0.1.0`,
+      `OWL desktop ${APP_VERSION}`,
       `Service URL: ${agentApi.baseUrl}`,
       `Service: ${health ? `online v${health.version}, provider ${health.provider} (${health.provider_configured ? "configured" : "not configured"}), approvals ${health.approvals_enforced ? "enforced" : "not enforced"}` : "offline"}`,
       `Project open: ${project ? "yes" : "no"}`,
@@ -147,6 +154,60 @@ export function HelpScreen() {
         </section>
       </div>
 
+      <section className="surface x-panel" aria-label="App updates">
+        <div className="x-panel-head">
+          <h3>App updates</h3>
+          <button
+            className="btn btn-sm btn-secondary"
+            onClick={() => void checkForUpdates()}
+            disabled={update.status === "checking"}
+          >
+            <ArrowClockwise size={14} /> {update.status === "checking" ? "Checking…" : "Check for updates"}
+          </button>
+        </div>
+        <div className="x-health-off" role="status">
+          {update.status === "idle" && (
+            <>
+              <Tag hue="gray" dot>Version {APP_VERSION}</Tag>
+              <p>Check GitHub for the latest release. Updates are manual downloads — nothing installs itself.</p>
+            </>
+          )}
+          {update.status === "checking" && (
+            <>
+              <Tag hue="gray" dot>Checking</Tag>
+              <p>Contacting GitHub for the latest release…</p>
+            </>
+          )}
+          {update.status === "up-to-date" && (
+            <>
+              <Tag hue="green" dot>Up to date</Tag>
+              <p>You&apos;re on the latest release (v{update.latest}).</p>
+            </>
+          )}
+          {update.status === "available" && (
+            <>
+              <Tag hue="yellow" dot>Update available</Tag>
+              <p>Version v{update.latest} is out — you&apos;re on v{APP_VERSION}. <a href={update.notesUrl} target="_blank" rel="noreferrer">Read the release notes</a>.</p>
+              <div className="x-update-actions">
+                <a className="btn btn-sm btn-secondary" href={APP_DOWNLOAD_URL} target="_blank" rel="noreferrer"><DownloadSimple size={14} /> Download</a>
+              </div>
+            </>
+          )}
+          {update.status === "no-releases" && (
+            <>
+              <Tag hue="gray" dot>No releases yet</Tag>
+              <p>GitHub has no releases published, so there&apos;s nothing to compare against.</p>
+            </>
+          )}
+          {update.status === "offline" && (
+            <>
+              <Tag hue="red" dot>Couldn&apos;t check</Tag>
+              <p>{update.message}</p>
+            </>
+          )}
+        </div>
+      </section>
+
       <SectionTitle><Keyboard size={16} /> Keyboard shortcuts</SectionTitle>
       <div className="x-shortcuts">
         {KEYBOARD_SHORTCUTS.map((shortcut) => (
@@ -184,7 +245,7 @@ export function HelpScreen() {
           </a>
         ))}
       </div>
-      <p className="x-foot-note">OWL desktop 0.1.0 · Runs on your machine. Your code and keys stay local.</p>
+      <p className="x-foot-note">OWL desktop {APP_VERSION} · Runs on your machine. Your code and keys stay local.</p>
     </div>
   );
 }

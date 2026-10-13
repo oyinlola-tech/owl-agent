@@ -9,6 +9,7 @@ import { type BackendTask, type ModelEntry, type RouteRead, type UsageRow } from
 import { EmptyState, PageHeader, SectionTitle } from "../../../../shared/components/pageLayout.component";
 import { Tag, type Hue } from "../../../../shared/components/tag.component";
 import "./modelsUsage.style.css";
+import { CostDashboard } from "./costDashboard.component";
 import { StatCard } from "../../../components/statCard.component";
 import { formatRelativeTime, formatTokenCount } from "../../../../shared/helpers/time.helper";
 
@@ -38,6 +39,8 @@ export function ModelsUsageScreen() {
   const [tasksById, setTasksById] = useState<Record<string, BackendTask>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [usageError, setUsageError] = useState<string | null>(null);
+  const [offline, setOffline] = useState(() => typeof navigator !== "undefined" && !navigator.onLine);
   const [validationById, setValidationById] = useState<Record<string, { busy?: boolean; status?: string; error?: string }>>({});
   const [prompt, setPrompt] = useState("Fix the failing checkout test");
   const [routeResult, setRouteResult] = useState<RouteRead | { error: string } | null>(null);
@@ -45,17 +48,33 @@ export function ModelsUsageScreen() {
 
   const loadModelsAndUsage = useCallback(async () => {
     setLoading(true);
-    const [registry, usageRows, tasks] = await Promise.all([
+    setUsageError(null);
+    const [registry, usageResult, tasks] = await Promise.all([
       agentApi.registry().then((r) => r.models).catch(() => [] as ModelEntry[]),
-      agentApi.usage().catch(() => [] as UsageRow[]),
+      agentApi.usage().then((rows) => ({ ok: true as const, rows })).catch(() => ({ ok: false as const, rows: [] as UsageRow[] })),
       agentApi.backendTasks().catch(() => [] as BackendTask[]),
     ]);
     setTasksById(Object.fromEntries(tasks.map((task) => [task.id, task])));
     setModels(registry);
-    setUsage(usageRows);
+    setUsage(usageResult.rows);
+    if (!usageResult.ok) {
+      setUsageError(typeof navigator !== "undefined" && !navigator.onLine
+        ? "You're offline. Usage will load when you reconnect."
+        : "Couldn't load usage from the OWL service. Start the service and retry.");
+    }
     setLoading(false);
   }, []);
   useEffect(() => { void loadModelsAndUsage(); }, [loadModelsAndUsage]);
+  useEffect(() => {
+    const markOnline = () => setOffline(false);
+    const markOffline = () => setOffline(true);
+    window.addEventListener("online", markOnline);
+    window.addEventListener("offline", markOffline);
+    return () => {
+      window.removeEventListener("online", markOnline);
+      window.removeEventListener("offline", markOffline);
+    };
+  }, []);
 
   const usageTotals = useMemo(() => {
     const summary = { input: 0, output: 0, calls: usage.length, failed: 0 };
@@ -128,6 +147,16 @@ export function ModelsUsageScreen() {
         <StatCard icon={WarningCircle} hue={usageTotals.failed ? "red" : "gray"} label="Failed calls" value={String(usageTotals.failed)}
           sub={usageTotals.calls ? `${Math.round((usageTotals.failed / usageTotals.calls) * 100)}% of calls` : "No calls yet"} />
       </div>
+
+      <CostDashboard
+        usage={usage}
+        loading={loading}
+        error={usageError}
+        offline={offline}
+        tasksById={tasksById}
+        onOpenTask={openBackendTask}
+        onRetry={() => void loadModelsAndUsage()}
+      />
 
       <div className="x-split">
         <section className="surface x-panel">
